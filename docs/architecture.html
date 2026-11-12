@@ -1,0 +1,450 @@
+<title>Migration Agent Platform</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single reading column of numbered sections; three library hues are an encoding reused in every figure and table. */
+:root {
+  --bg: #f6f7fb; --surface: #ffffff; --fg: #161a26; --muted: #5b6378; --line: #d5d9e6;
+  --graph: #4553c9; --graph-bg: #e9ebfb;
+  --chain: #0f7f76; --chain-bg: #dff3f0;
+  --fuse: #b25e09;  --fuse-bg: #fbeeda;
+  --gate: #b3266b;  --gate-bg: #fbe4ef;
+  --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10131c; --surface: #181c28; --fg: #e6e9f2; --muted: #9aa3b8; --line: #2d3345;
+    --graph: #98a3ff; --graph-bg: #23284d;
+    --chain: #54cfc3; --chain-bg: #123a37;
+    --fuse: #f0ad5a;  --fuse-bg: #3d2c12;
+    --gate: #f283b6;  --gate-bg: #40182b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10131c; --surface: #181c28; --fg: #e6e9f2; --muted: #9aa3b8; --line: #2d3345;
+  --graph: #98a3ff; --graph-bg: #23284d;
+  --chain: #54cfc3; --chain-bg: #123a37;
+  --fuse: #f0ad5a;  --fuse-bg: #3d2c12;
+  --gate: #f283b6;  --gate-bg: #40182b;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.6; }
+.page { max-width: 960px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 56px; }
+header { display: flex; flex-direction: column; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 34px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 22px; line-height: 1.25; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--display); font-weight: 600; font-size: 16px; margin: 0; }
+p { margin: 0; max-width: 68ch; }
+.lede { font-size: 17px; color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.num { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+.key { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid; display: inline-block; }
+.sw.g { background: var(--graph-bg); border-color: var(--graph); }
+.sw.c { background: var(--chain-bg); border-color: var(--chain); }
+.sw.f { background: var(--fuse-bg); border-color: var(--fuse); }
+.sw.h { background: var(--gate-bg); border-color: var(--gate); border-style: dashed; }
+.sw.n { background: var(--surface); border-color: var(--muted); }
+.libs { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.lib { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid; border-radius: 6px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.lib.g { border-top-color: var(--graph); } .lib.c { border-top-color: var(--chain); } .lib.f { border-top-color: var(--fuse); }
+.lib .role { font-size: 13px; color: var(--muted); }
+ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+li { max-width: 68ch; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.scroll.pad { padding: 16px; }
+figcaption { font-size: 13px; color: var(--muted); max-width: 72ch; }
+svg { display: block; width: 100%; min-width: 760px; height: auto; color: var(--fg); font-family: var(--body); }
+svg .t { fill: var(--fg); font-size: 13px; font-weight: 600; }
+svg .s { fill: var(--muted); font-size: 11px; }
+svg .l { fill: var(--muted); font-size: 11px; font-style: italic; }
+svg .bx { fill: var(--surface); stroke: var(--muted); stroke-width: 1.2; }
+svg .zone { fill: none; stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 5 4; }
+svg .g { fill: var(--graph-bg); stroke: var(--graph); stroke-width: 1.5; }
+svg .c { fill: var(--chain-bg); stroke: var(--chain); stroke-width: 1.5; }
+svg .f { fill: var(--fuse-bg); stroke: var(--fuse); stroke-width: 1.5; }
+svg .h { fill: var(--gate-bg); stroke: var(--gate); stroke-width: 1.5; stroke-dasharray: 5 3; }
+svg .a { fill: none; stroke: currentColor; stroke-width: 1.3; }
+svg .ad { fill: none; stroke: currentColor; stroke-width: 1.3; stroke-dasharray: 4 3; }
+svg .ah { fill: currentColor; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 640px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+.tag { font-family: var(--mono); font-size: 11.5px; padding: 1px 6px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+.tag.g { color: var(--graph); border-color: var(--graph); background: var(--graph-bg); }
+.tag.c { color: var(--chain); border-color: var(--chain); background: var(--chain-bg); }
+.tag.h { color: var(--gate); border-color: var(--gate); background: var(--gate-bg); }
+.dim { color: var(--muted); }
+pre { margin: 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; padding: 16px 18px; white-space: pre; }
+code { font-family: var(--mono); font-size: .9em; }
+.cm { color: var(--muted); }
+.kg { color: var(--graph); } .kc { color: var(--chain); } .kf { color: var(--fuse); }
+.note { font-size: 13px; color: var(--muted); border-left: 2px solid var(--line); padding-left: 12px; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+.two > div { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+</style>
+
+<div class="page">
+
+<header>
+  <span class="num">ARCHITECTURE · DRAFT v0.2 · MySQL → PostgreSQL first</span>
+  <h1>Migration Agent Platform</h1>
+  <p class="lede">A web platform where agents plan, map and verify a data migration, and deterministic engines move the rows. Built on LangGraph, LangChain and Langfuse, with databases and tools hidden behind adapters.</p>
+  <div class="legend" aria-label="Colour key used in every figure">
+    <span class="key"><i class="sw g"></i>LangGraph</span>
+    <span class="key"><i class="sw c"></i>LangChain</span>
+    <span class="key"><i class="sw f"></i>Langfuse</span>
+    <span class="key"><i class="sw h"></i>Human approval</span>
+    <span class="key"><i class="sw n"></i>Plain code, no LLM</span>
+  </div>
+</header>
+
+<section>
+  <span class="num">01</span>
+  <h2>Three libraries, three jobs</h2>
+  <p>They do not overlap. LangGraph decides what runs next, LangChain is how a single step talks to a model, and Langfuse records and scores what happened.</p>
+  <div class="libs">
+    <div class="lib g">
+      <h3>LangGraph</h3>
+      <span class="role">Orchestration and durability</span>
+      <ul>
+        <li>Supervisor as a <code>StateGraph</code>; every agent is a subgraph</li>
+        <li>Postgres checkpointer so a run survives a crash</li>
+        <li><code>interrupt()</code> parks the run at approval gates</li>
+        <li><code>Send()</code> fans work out per table</li>
+        <li>Streams progress events to the UI</li>
+      </ul>
+    </div>
+    <div class="lib c">
+      <h3>LangChain</h3>
+      <span class="role">Building blocks inside a node</span>
+      <ul>
+        <li>Chat model wrapper, so the provider is config</li>
+        <li>Prompt templates</li>
+        <li>Structured output into Pydantic models</li>
+        <li>Tools that wrap connector methods</li>
+        <li>Embeddings and a vector store for column matching</li>
+      </ul>
+    </div>
+    <div class="lib f">
+      <h3>Langfuse</h3>
+      <span class="role">Tracing, prompts, evaluation</span>
+      <ul>
+        <li>One callback handler traces graph and chain calls</li>
+        <li>Prompt versions, fetched by name at runtime</li>
+        <li>Cost and latency per migration and per agent</li>
+        <li>Golden datasets and scores for mapping quality</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <span class="num">02</span>
+  <h2>Platform layers</h2>
+  <figure>
+    <div class="scroll pad">
+      <svg viewBox="0 0 920 580" role="img" aria-label="Five layers from web app down to data plane. The control plane holds a LangGraph supervisor and agent subgraphs with LangChain inside; it reports traces to Langfuse and reaches databases only through connector and engine interfaces.">
+        <defs><marker id="a1" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path class="ah" d="M0,0 L8,4 L0,8 z"/></marker></defs>
+
+        <rect class="bx" x="20" y="20" width="652" height="48" rx="5"/>
+        <text class="t" x="36" y="42">Web app</text><text class="s" x="36" y="58">Next.js · project wizard, mapping review, approvals, live progress</text>
+
+        <line class="a" x1="346" y1="68" x2="346" y2="108" marker-end="url(#a1)"/><text class="l" x="356" y="92">REST + SSE</text>
+
+        <rect class="bx" x="20" y="108" width="652" height="48" rx="5"/>
+        <text class="t" x="36" y="130">Backend API</text><text class="s" x="36" y="146">FastAPI · auth, roles, start and resume runs, audit log</text>
+
+        <line class="a" x1="672" y1="132" x2="730" y2="132" marker-end="url(#a1)"/><text class="l" x="701" y="126" text-anchor="middle">persist</text>
+        <rect class="bx" x="730" y="108" width="170" height="48" rx="5"/>
+        <text class="t" x="744" y="130">App Postgres</text><text class="s" x="744" y="146">runs · checkpoints · audit</text>
+
+        <line class="a" x1="346" y1="156" x2="346" y2="196" marker-end="url(#a1)"/><text class="l" x="356" y="180">start / resume run</text>
+
+        <rect class="zone" x="20" y="196" width="652" height="176" rx="6"/>
+        <text class="s" x="32" y="214">CONTROL PLANE</text>
+
+        <rect class="g" x="32" y="226" width="204" height="132" rx="5"/>
+        <text class="t" x="46" y="248">Supervisor StateGraph</text>
+        <text class="s" x="46" y="270">phase routing in code</text>
+        <text class="s" x="46" y="288">Postgres checkpointer</text>
+        <text class="s" x="46" y="306">interrupt() approval gates</text>
+        <text class="s" x="46" y="324">Send() per-table fan-out</text>
+
+        <line class="a" x1="236" y1="292" x2="300" y2="292" marker-end="url(#a1)"/><text class="l" x="268" y="285" text-anchor="middle">invokes</text>
+
+        <rect class="g" x="300" y="226" width="360" height="132" rx="5"/>
+        <text class="t" x="314" y="248">Agent subgraphs (9)</text>
+        <text class="s" x="314" y="264">each a small LangGraph with its own nodes</text>
+        <rect class="c" x="312" y="278" width="336" height="66" rx="4"/>
+        <text class="t" x="326" y="300">LangChain inside LLM nodes</text>
+        <text class="s" x="326" y="317">chat model · prompts · structured output</text>
+        <text class="s" x="326" y="332">tools · embeddings · vector store</text>
+
+        <line class="ad" x1="660" y1="255" x2="730" y2="255" marker-end="url(#a1)"/><text class="l" x="702" y="248" text-anchor="middle">traces</text>
+        <rect class="f" x="730" y="226" width="170" height="58" rx="5"/>
+        <text class="t" x="744" y="250">Langfuse</text><text class="s" x="744" y="268">traces · prompts · evals</text>
+
+        <line class="a" x1="660" y1="327" x2="730" y2="327" marker-end="url(#a1)"/><text class="l" x="702" y="320" text-anchor="middle">chat calls</text>
+        <rect class="bx" x="730" y="298" width="170" height="58" rx="5"/>
+        <text class="t" x="744" y="322">LLM provider</text><text class="s" x="744" y="340">any, chosen per agent</text>
+
+        <line class="a" x1="346" y1="372" x2="346" y2="412" marker-end="url(#a1)"/><text class="l" x="356" y="396">interfaces only</text>
+
+        <rect class="bx" x="20" y="412" width="180" height="48" rx="5"/>
+        <text class="t" x="34" y="434">Connector + SQL guard</text><text class="s" x="34" y="450">one adapter per database</text>
+        <rect class="bx" x="250" y="412" width="200" height="48" rx="5"/>
+        <text class="t" x="264" y="434">Execution engine interface</text><text class="s" x="264" y="450">one adapter per tool</text>
+        <rect class="bx" x="500" y="412" width="172" height="48" rx="5"/>
+        <text class="t" x="514" y="434">Schema IR</text><text class="s" x="514" y="450">neutral schema model</text>
+
+        <line class="a" x1="110" y1="460" x2="110" y2="512" marker-end="url(#a1)"/><text class="l" x="120" y="490">schema, stats</text>
+        <line class="a" x1="350" y1="460" x2="350" y2="512" marker-end="url(#a1)"/><text class="l" x="360" y="490">submit job</text>
+
+        <rect class="bx" x="20" y="512" width="180" height="48" rx="5"/>
+        <text class="t" x="34" y="534">Source database</text><text class="s" x="34" y="550">read-only user</text>
+        <rect class="bx" x="250" y="512" width="200" height="48" rx="5"/>
+        <text class="t" x="264" y="534">Engines</text><text class="s" x="264" y="550">dump/load · Airbyte · Debezium</text>
+        <rect class="bx" x="500" y="512" width="172" height="48" rx="5"/>
+        <text class="t" x="514" y="534">Target database</text><text class="s" x="514" y="550">DDL only after approval</text>
+
+        <line class="a" x1="200" y1="536" x2="250" y2="536" marker-end="url(#a1)"/><text class="l" x="225" y="529" text-anchor="middle">rows</text>
+        <line class="a" x1="450" y1="536" x2="500" y2="536" marker-end="url(#a1)"/><text class="l" x="475" y="529" text-anchor="middle">rows</text>
+      </svg>
+    </div>
+    <figcaption>Rows travel only along the bottom row, between source, engine and target. The control plane sees schema and statistics, never the data itself. The supervisor writes its checkpoints to the same App Postgres the API uses.</figcaption>
+  </figure>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Layer</th><th>Does</th><th>Never does</th></tr></thead>
+      <tbody>
+        <tr><td>Web app</td><td>Collects input, shows artifacts, captures approvals</td><td>Talks to source or target</td></tr>
+        <tr><td>Backend API</td><td>Auth, projects, starts and resumes runs, streams events</td><td>Runs long jobs inside a request</td></tr>
+        <tr><td>Control plane</td><td>Decides the next step, runs agents, pauses for people</td><td>Moves data</td></tr>
+        <tr><td>Interfaces</td><td>Hide every database and tool behind fixed contracts</td><td>Hold business logic</td></tr>
+        <tr><td>Data plane</td><td>Extracts, loads, replicates</td><td>Calls an LLM</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="num">03</span>
+  <h2>Supervisor: a fixed phase machine</h2>
+  <p>Migration phases happen in a known order, so routing is code, not an LLM choosing the next agent. Models are used inside agents only.</p>
+  <figure>
+    <div class="scroll pad">
+      <svg viewBox="0 0 880 440" role="img" aria-label="Thirteen phases in order from Discovery to Report, with four human approval gates after strategy, mapping, pipeline build and validation, and a loop from Validation back to Execution on a load defect.">
+        <defs><marker id="a2" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path class="ah" d="M0,0 L8,4 L0,8 z"/></marker></defs>
+
+        <rect class="g" x="20" y="20" width="180" height="44" rx="5"/><text class="t" x="110" y="47" text-anchor="middle">1 Discovery</text>
+        <rect class="g" x="240" y="20" width="180" height="44" rx="5"/><text class="t" x="330" y="47" text-anchor="middle">2 Profiling</text>
+        <rect class="g" x="460" y="20" width="180" height="44" rx="5"/><text class="t" x="550" y="47" text-anchor="middle">3 Strategy</text>
+        <rect class="h" x="680" y="20" width="180" height="44" rx="22"/><text class="t" x="770" y="47" text-anchor="middle">Gate: plan</text>
+        <line class="a" x1="200" y1="42" x2="240" y2="42" marker-end="url(#a2)"/>
+        <line class="a" x1="420" y1="42" x2="460" y2="42" marker-end="url(#a2)"/>
+        <line class="a" x1="640" y1="42" x2="680" y2="42" marker-end="url(#a2)"/>
+        <polyline class="a" points="770,64 770,97 110,97 110,130" marker-end="url(#a2)"/><text class="l" x="440" y="91" text-anchor="middle">approved</text>
+
+        <rect class="g" x="20" y="130" width="180" height="44" rx="5"/><text class="t" x="110" y="157" text-anchor="middle">4a Schema mapping</text>
+        <rect class="g" x="240" y="130" width="180" height="44" rx="5"/><text class="t" x="330" y="157" text-anchor="middle">4b Value mapping</text>
+        <rect class="h" x="460" y="130" width="180" height="44" rx="22"/><text class="t" x="550" y="157" text-anchor="middle">Gate: mapping</text>
+        <rect class="g" x="680" y="130" width="180" height="44" rx="5"/><text class="t" x="770" y="157" text-anchor="middle">5 Code conversion</text>
+        <line class="a" x1="200" y1="152" x2="240" y2="152" marker-end="url(#a2)"/>
+        <line class="a" x1="420" y1="152" x2="460" y2="152" marker-end="url(#a2)"/>
+        <line class="a" x1="640" y1="152" x2="680" y2="152" marker-end="url(#a2)"/>
+        <polyline class="a" points="770,174 770,207 110,207 110,240" marker-end="url(#a2)"/>
+
+        <rect class="g" x="20" y="240" width="180" height="44" rx="5"/><text class="t" x="110" y="267" text-anchor="middle">6 Pipeline build</text>
+        <rect class="h" x="240" y="240" width="180" height="44" rx="22"/><text class="t" x="330" y="267" text-anchor="middle">Gate: execute</text>
+        <rect class="g" x="460" y="240" width="180" height="44" rx="5"/><text class="t" x="550" y="267" text-anchor="middle">7 Execution</text>
+        <rect class="g" x="680" y="240" width="180" height="44" rx="5"/><text class="t" x="770" y="267" text-anchor="middle">8 Validation</text>
+        <line class="a" x1="200" y1="262" x2="240" y2="262" marker-end="url(#a2)"/>
+        <line class="a" x1="420" y1="262" x2="460" y2="262" marker-end="url(#a2)"/>
+        <line class="a" x1="640" y1="262" x2="680" y2="262" marker-end="url(#a2)"/>
+        <path class="ad" d="M 730 284 C 730 314, 580 314, 580 284" marker-end="url(#a2)"/><text class="l" x="655" y="324" text-anchor="middle">load defect: rerun</text>
+        <polyline class="a" points="810,284 810,345 110,345 110,376" marker-end="url(#a2)"/><text class="l" x="330" y="339" text-anchor="middle">all checks pass</text>
+
+        <rect class="h" x="20" y="376" width="180" height="44" rx="22"/><text class="t" x="110" y="403" text-anchor="middle">Gate: cutover</text>
+        <rect class="bx" x="240" y="376" width="180" height="44" rx="5"/><text class="t" x="330" y="403" text-anchor="middle">Report</text>
+        <line class="a" x1="200" y1="398" x2="240" y2="398" marker-end="url(#a2)"/>
+      </svg>
+    </div>
+    <figcaption>Each gate is a LangGraph <code>interrupt()</code>: the run is saved and waits until the API resumes it with a decision. A rejected gate returns to the phase before it. A mapping defect found in Validation returns to Schema mapping, not to Execution.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <span class="num">04</span>
+  <h2>The agents</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Agent</th><th>Produces</th><th>LLM used for</th><th>LangChain pieces</th><th>LangGraph feature</th></tr></thead>
+      <tbody>
+        <tr><td>0 Supervisor</td><td>Phase transitions</td><td class="dim">Nothing</td><td class="dim">None</td><td><span class="tag g">StateGraph</span> <span class="tag g">checkpointer</span></td></tr>
+        <tr><td>1 Discovery</td><td>Inventory in schema IR, dependency graph</td><td>Describing what each table is for</td><td><span class="tag c">tools</span> <span class="tag c">structured output</span></td><td><span class="tag g">Send</span> per schema</td></tr>
+        <tr><td>2 Profiling</td><td>Data quality report, PII flags</td><td>Classifying columns, explaining issues</td><td><span class="tag c">tools</span> <span class="tag c">structured output</span></td><td><span class="tag g">Send</span> per table</td></tr>
+        <tr><td>3 Strategy</td><td>Plan, wave order, risks, rollback approach</td><td>Weighing size, downtime, engine limits</td><td><span class="tag c">prompt</span> <span class="tag c">structured output</span></td><td><span class="tag h">gate: plan</span></td></tr>
+        <tr><td>4a Schema mapper</td><td>Mapping spec: entities, columns, types, transforms, keys</td><td>Ranking candidates, writing transforms</td><td><span class="tag c">embeddings</span> <span class="tag c">vector store</span> <span class="tag c">structured output</span></td><td><span class="tag g">Send</span> per table, repair loop</td></tr>
+        <tr><td>4b Value mapper</td><td>Code and enum mapping tables</td><td>Suggesting value matches</td><td><span class="tag c">structured output</span></td><td><span class="tag h">gate: mapping</span></td></tr>
+        <tr><td>5 Code conversion</td><td>Converted views, procedures, triggers</td><td>Translating what sqlglot cannot</td><td><span class="tag c">prompt</span> <span class="tag c">tools</span></td><td>Repair loop</td></tr>
+        <tr><td>6 Pipeline builder</td><td>Engine job config, load order</td><td class="dim">Very little; mostly templates</td><td class="dim">None needed</td><td><span class="tag h">gate: execute</span></td></tr>
+        <tr><td>7 Execution monitor</td><td>Run status, failure diagnosis</td><td>Turning an engine error into a likely cause</td><td><span class="tag c">prompt</span></td><td>Polling loop, retries</td></tr>
+        <tr><td>8 Validation</td><td>Reconciliation report, defect class</td><td>Explaining mismatches</td><td><span class="tag c">tools</span> <span class="tag c">structured output</span></td><td><span class="tag h">gate: cutover</span>, conditional edges</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Agents 6 and 7 are mostly ordinary code. They are listed as agents because they are graph nodes with their own state, not because they need a model.</p>
+</section>
+
+<section>
+  <span class="num">05</span>
+  <h2>Schema mapper, step by step</h2>
+  <p>The mapping spec is the single source of truth. Target DDL, engine config and validation queries are all generated from the approved version.</p>
+  <figure>
+    <div class="scroll pad">
+      <svg viewBox="0 0 880 250" role="img" aria-label="Seven steps: rule pass, candidate generation, LLM ranking, machine verification with a retry loop back to ranking, assemble spec, human review, freeze and version.">
+        <defs><marker id="a3" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path class="ah" d="M0,0 L8,4 L0,8 z"/></marker></defs>
+
+        <rect class="bx" x="20" y="60" width="180" height="56" rx="5"/><text class="t" x="110" y="84" text-anchor="middle">Rule pass</text><text class="s" x="110" y="101" text-anchor="middle">exact names, type table</text>
+        <rect class="c" x="240" y="60" width="180" height="56" rx="5"/><text class="t" x="330" y="84" text-anchor="middle">Candidate generation</text><text class="s" x="330" y="101" text-anchor="middle">embeddings + profile stats</text>
+        <rect class="c" x="460" y="60" width="180" height="56" rx="5"/><text class="t" x="550" y="84" text-anchor="middle">LLM ranking</text><text class="s" x="550" y="101" text-anchor="middle">match, transform, reason</text>
+        <rect class="bx" x="680" y="60" width="180" height="56" rx="5"/><text class="t" x="770" y="84" text-anchor="middle">Machine verification</text><text class="s" x="770" y="101" text-anchor="middle">parse, run on sample</text>
+        <line class="a" x1="200" y1="88" x2="240" y2="88" marker-end="url(#a3)"/>
+        <line class="a" x1="420" y1="88" x2="460" y2="88" marker-end="url(#a3)"/>
+        <line class="a" x1="640" y1="88" x2="680" y2="88" marker-end="url(#a3)"/>
+        <path class="ad" d="M 770 60 C 770 22, 550 22, 550 60" marker-end="url(#a3)"/><text class="l" x="660" y="20" text-anchor="middle">fails: error sent back, up to 3 tries</text>
+        <polyline class="a" points="770,116 770,146 110,146 110,176" marker-end="url(#a3)"/><text class="l" x="440" y="140" text-anchor="middle">passes, or tries used up</text>
+
+        <rect class="bx" x="20" y="176" width="180" height="56" rx="5"/><text class="t" x="110" y="200" text-anchor="middle">Assemble spec</text><text class="s" x="110" y="217" text-anchor="middle">lowest confidence first</text>
+        <rect class="h" x="240" y="176" width="180" height="56" rx="28"/><text class="t" x="330" y="200" text-anchor="middle">Human review</text><text class="s" x="330" y="217" text-anchor="middle">approve, edit, reject</text>
+        <rect class="g" x="460" y="176" width="180" height="56" rx="5"/><text class="t" x="550" y="200" text-anchor="middle">Freeze and version</text><text class="s" x="550" y="217" text-anchor="middle">spec v1 drives everything</text>
+        <line class="a" x1="200" y1="204" x2="240" y2="204" marker-end="url(#a3)"/>
+        <line class="a" x1="420" y1="204" x2="460" y2="204" marker-end="url(#a3)"/>
+      </svg>
+    </div>
+    <figcaption>Only two of seven steps call a model. Verification checks each transform for truncation, NOT NULL violations, lost uniqueness and failed casts on sampled rows. Edits made in review are verified again before the freeze.</figcaption>
+  </figure>
+  <div class="scroll"><pre><span class="cm"># one record of the mapping spec</span>
+- target: customers.full_name
+  sources: [cust_mst.fname, cust_mst.lname]
+  kind: derived            <span class="cm"># direct | derived | constant | lookup | dropped</span>
+  transform: "TRIM(CONCAT(fname, ' ', lname))"
+  target_type: VARCHAR(120)
+  null_handling: "use fname alone when lname is NULL"
+  confidence: 0.82
+  verified: true
+  status: pending_review</pre></div>
+</section>
+
+<section>
+  <span class="num">06</span>
+  <h2>How the three fit in code</h2>
+  <p>One ranking node and one approval gate, traced end to end. Import paths change between releases; check the current docs of each library before copying.</p>
+  <div class="scroll"><pre><span class="kc">from langchain.chat_models import init_chat_model</span>
+<span class="kg">from langgraph.graph import StateGraph, START, END</span>
+<span class="kg">from langgraph.types import interrupt</span>
+<span class="kg">from langgraph.checkpoint.postgres import PostgresSaver</span>
+<span class="kf">from langfuse.langchain import CallbackHandler</span>
+
+<span class="cm"># LangChain: provider is config, output is a typed object</span>
+llm = <span class="kc">init_chat_model</span>(cfg.model, model_provider=cfg.provider)
+ranker = rank_prompt | llm.<span class="kc">with_structured_output</span>(ColumnMatch)
+
+def rank(state):                       <span class="cm"># a graph node</span>
+    return {"matches": ranker.batch(state["candidates"])}
+
+def review_gate(state):                <span class="cm"># LangGraph: park the run for a human</span>
+    decision = <span class="kg">interrupt</span>({"spec_uri": state["spec_uri"]})
+    return {"approved": decision["approved"]}
+
+g = <span class="kg">StateGraph</span>(MapperState)
+g.add_node("rank", rank)
+g.add_node("verify", verify)           <span class="cm"># plain code, no model</span>
+g.add_node("review", review_gate)
+g.add_edge(START, "rank")
+g.add_edge("rank", "verify")
+g.add_conditional_edges("verify", retry_or_continue, {"retry": "rank", "ok": "review"})
+g.add_edge("review", END)
+mapper = g.compile(checkpointer=<span class="kg">PostgresSaver</span>(conn))
+
+<span class="cm"># Langfuse: one handler traces the graph and every chain inside it</span>
+mapper.invoke(inputs, config={
+    "configurable": {"thread_id": migration_id},
+    "callbacks": [<span class="kf">CallbackHandler</span>()],
+    "metadata": {"langfuse_tags": ["schema-mapper"], "langfuse_session_id": migration_id},
+})</pre></div>
+</section>
+
+<section>
+  <span class="num">07</span>
+  <h2>What makes it platform and tool agnostic</h2>
+  <p>Agents import three contracts and nothing else. A new database or a new migration tool is a new adapter; no agent changes.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Contract</th><th>Methods</th><th>Adapters, in build order</th></tr></thead>
+      <tbody>
+        <tr><td>Connector</td><td><code>capabilities</code> · <code>introspect</code> · <code>profile</code> · <code>sample</code> (masked) · <code>query</code></td><td>MySQL, PostgreSQL, then SQL Server, Oracle</td></tr>
+        <tr><td>Execution engine</td><td><code>capabilities</code> · <code>plan</code> · <code>submit</code> · <code>status</code> · <code>cancel</code></td><td>Native dump/load, Airbyte, Debezium CDC</td></tr>
+        <tr><td>Schema IR</td><td>Tables, columns, logical types, constraints, views, routines</td><td>Type maps in and out per dialect</td></tr>
+        <tr><td>Chat model</td><td>LangChain chat model interface</td><td>Any provider, model set per agent in config</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="num">08</span>
+  <h2>Safety rules and evaluation</h2>
+  <div class="two">
+    <div>
+      <h3>Rules enforced in code</h3>
+      <ul>
+        <li>Credentials are resolved inside adapters. Prompts and graph state carry a connection id only.</li>
+        <li>The source uses a read-only user.</li>
+        <li>Models see schema and statistics. Samples are masked by the connector first.</li>
+        <li>Every agent-written statement is parsed by the SQL guard. Source accepts <code>SELECT</code> only.</li>
+        <li>Target DDL needs an approval tied to a frozen spec version.</li>
+        <li>Agents cannot issue <code>DROP</code>, <code>TRUNCATE</code> or an unbounded <code>DELETE</code>.</li>
+        <li>Every statement and state change goes to an append-only audit log.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Scores tracked in Langfuse</h3>
+      <ul>
+        <li>Column match precision and recall against hand-written golden mappings</li>
+        <li>Transform correctness, judged by running the transform and comparing output</li>
+        <li>Wrong mappings that came back with confidence above 0.8</li>
+        <li>Share of mappings a reviewer had to edit</li>
+        <li>Cost and time per migration, split by agent</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <span class="num">09</span>
+  <h2>Build order</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Phase</th><th>Scope</th><th>Done when</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Schema IR, MySQL and Postgres connectors, SQL guard, Supervisor, Discovery, Schema mapper, native engine, Validation, review UI, Langfuse tracing</td><td>The sample database migrates end to end with a person approving the mapping</td></tr>
+        <tr><td>2</td><td>Profiling, Value mapper, Strategy, golden datasets</td><td>Mapping quality is scored on every prompt change</td></tr>
+        <tr><td>3</td><td>Code conversion, Pipeline builder, Airbyte adapter</td><td>A second engine runs the same frozen spec</td></tr>
+        <tr><td>4</td><td>Debezium CDC, cutover gate, reverse sync</td><td>The sample database migrates with no downtime</td></tr>
+        <tr><td>5</td><td>Multi-user, roles, more connectors</td><td>A second team uses it without help</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Open decisions: the first source and target pair (this page assumes MySQL to PostgreSQL), whether an agent may propose the target schema, the worker queue, and whether workers run inside the customer network.</p>
+</section>
+
+</div>
