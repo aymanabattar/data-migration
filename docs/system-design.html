@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Migration Platform System Design</title>
+<style>
+:root {
+  --bg: #f6f7fb; --surface: #ffffff; --fg: #161a26; --muted: #5b6378; --line: #d5d9e6;
+  --graph: #4553c9; --graph-bg: #e9ebfb;
+  --chain: #0f7f76; --chain-bg: #dff3f0;
+  --fuse: #b25e09;  --fuse-bg: #fbeeda;
+  --gate: #b3266b;  --gate-bg: #fbe4ef;
+  --display: "Space Grotesk", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --body: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #10131c; --surface: #181c28; --fg: #e6e9f2; --muted: #9aa3b8; --line: #2d3345;
+    --graph: #98a3ff; --graph-bg: #23284d;
+    --chain: #54cfc3; --chain-bg: #123a37;
+    --fuse: #f0ad5a;  --fuse-bg: #3d2c12;
+    --gate: #f283b6;  --gate-bg: #40182b;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.6; }
+.page { max-width: 980px; margin: 0 auto; padding: 40px 16px 80px; display: flex; flex-direction: column; gap: 52px; }
+header { display: flex; flex-direction: column; gap: 12px; }
+h1 { font-family: var(--display); font-size: 32px; line-height: 1.15; margin: 0; }
+h2 { font-family: var(--display); font-size: 22px; line-height: 1.25; margin: 0; }
+h3 { font-family: var(--display); font-size: 16px; margin: 0; }
+p { margin: 0; max-width: 72ch; }
+.lede { font-size: 17px; color: var(--muted); }
+.num { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+ul, ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+li { max-width: 72ch; }
+nav ol { columns: 2; column-gap: 32px; display: block; font-size: 14px; }
+nav li { margin-bottom: 4px; }
+a { color: var(--graph); }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.scroll.pad { padding: 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 640px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+table.kv { min-width: 520px; }
+table.kv td:first-child { width: 150px; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; white-space: normal; }
+.agent { display: flex; flex-direction: column; gap: 8px; break-inside: avoid; }
+.agent-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.no { font-family: var(--mono); font-size: 13px; color: var(--graph); background: var(--graph-bg); padding: 2px 8px; border-radius: 4px; }
+.tag { font-family: var(--mono); font-size: 11.5px; padding: 1px 6px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+.tag.h { color: var(--gate); border-color: var(--gate); background: var(--gate-bg); }
+.tag.m { color: var(--chain); border-color: var(--chain); background: var(--chain-bg); }
+.tag.s { color: var(--fuse); border-color: var(--fuse); background: var(--fuse-bg); }
+.note { font-size: 13px; color: var(--muted); border-left: 2px solid var(--line); padding-left: 12px; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+figcaption { font-size: 13px; color: var(--muted); max-width: 72ch; }
+code { font-family: var(--mono); font-size: .9em; }
+pre { margin: 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; padding: 16px 18px; white-space: pre; }
+.cm { color: var(--muted); }
+svg { display: block; width: 100%; min-width: 780px; height: auto; color: var(--fg); font-family: var(--body); }
+svg .t { fill: var(--fg); font-size: 13px; font-weight: 600; }
+svg .s { fill: var(--muted); font-size: 11px; }
+svg .l { fill: var(--muted); font-size: 11px; font-style: italic; }
+svg .bx { fill: var(--surface); stroke: var(--muted); stroke-width: 1.2; }
+svg .zone { fill: none; stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 5 4; }
+svg .g { fill: var(--graph-bg); stroke: var(--graph); stroke-width: 1.5; }
+svg .c { fill: var(--chain-bg); stroke: var(--chain); stroke-width: 1.5; }
+svg .f { fill: var(--fuse-bg); stroke: var(--fuse); stroke-width: 1.5; }
+svg .a { fill: none; stroke: currentColor; stroke-width: 1.3; }
+svg .ad { fill: none; stroke: currentColor; stroke-width: 1.3; stroke-dasharray: 4 3; }
+svg .ah { fill: currentColor; }
+@media (max-width: 640px) { nav ol { columns: 1; } }
+@media print { body { background: #fff; font-size: 11.5px; } .page { max-width: none; padding: 0; gap: 28px; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <span class="num">SYSTEM DESIGN · v1.0 DRAFT · NOT YET IMPLEMENTED</span>
+  <h1>Migration Platform System Design</h1>
+  <p class="lede">Requirements, architecture, component and agent specifications, data model, API, tech stack, security, testing and roadmap for a web platform where agents plan, map and verify data migrations and deterministic engines move the data.</p>
+  <p class="note">Every number in this document is a design target, not a measurement. Library APIs named here (LangGraph, LangChain, Langfuse) must be checked against current documentation when coding starts.</p>
+</header>
+
+<nav aria-label="Contents">
+  <ol>
+    <li><a href="#s1">Scope and assumptions</a></li>
+    <li><a href="#s2">Users and roles</a></li>
+    <li><a href="#s3">Functional requirements</a></li>
+    <li><a href="#s4">Non-functional requirements</a></li>
+    <li><a href="#s5">Architecture</a></li>
+    <li><a href="#s6">Component specifications</a></li>
+    <li><a href="#s7">Run lifecycle and failure handling</a></li>
+    <li><a href="#s8">Abstraction contracts</a></li>
+    <li><a href="#s9">Agent specifications</a></li>
+    <li><a href="#s10">Data model</a></li>
+    <li><a href="#s11">API</a></li>
+    <li><a href="#s12">Tech stack</a></li>
+    <li><a href="#s13">Security</a></li>
+    <li><a href="#s14">Observability and evaluation</a></li>
+    <li><a href="#s15">Deployment</a></li>
+    <li><a href="#s16">Testing</a></li>
+    <li><a href="#s17">Risks and open decisions</a></li>
+    <li><a href="#s18">Roadmap</a></li>
+  </ol>
+</nav>
+
+<section id="s1">
+  <span class="num">01</span>
+  <h2>Scope and assumptions</h2>
+  <div class="scroll"><table class="kv"><tbody>
+    <tr><td>Goal</td><td>Reduce the manual effort and defect rate of database migrations by having agents produce and verify the planning artifacts, with people approving every irreversible step.</td></tr>
+    <tr><td>In scope, v1</td><td>Relational source and target. MySQL to PostgreSQL first. User supplies the target schema or accepts a like-for-like one. One-shot load with downtime. Web UI, approvals, validation report.</td></tr>
+    <tr><td>Later</td><td>More databases, Airbyte and Debezium engines, zero-downtime sync, stored code conversion at scale, multi-tenant hosting.</td></tr>
+    <tr><td>Out of scope</td><td>File and object storage migration, application code changes, data cleansing of source systems, NoSQL sources.</td></tr>
+    <tr><td>Assumptions</td><td>Workers can reach source and target over the network. A read-only source user and a target user with DDL rights are provided. One organisation per deployment until Phase 5.</td></tr>
+    <tr><td>Design rules</td><td>Agents plan, engines move. The mapping spec is the single source of truth. Agents see interfaces, never a specific database or tool. Anything executable is verified by execution. People approve what cannot be undone. Every step is resumable.</td></tr>
+  </tbody></table></div>
+</section>
+
+<section id="s2">
+  <span class="num">02</span>
+  <h2>Users and roles</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Role</th><th>Who</th><th>Can</th></tr></thead>
+    <tbody>
+      <tr><td>Viewer</td><td>Stakeholder, auditor</td><td>Read projects, artifacts, reports, audit log</td></tr>
+      <tr><td>Operator</td><td>Data engineer, analyst</td><td>Create projects and connections, start runs, edit mappings</td></tr>
+      <tr><td>Approver</td><td>Architect, data owner</td><td>Pass or reject gates. Cannot approve a spec they were the last to edit.</td></tr>
+      <tr><td>Admin</td><td>Platform owner</td><td>Manage users, model settings, engines, retention</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s3">
+  <span class="num">03</span>
+  <h2>Functional requirements</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>ID</th><th>Requirement</th><th>Phase</th></tr></thead>
+    <tbody>
+      <tr><td>FR-01</td><td>Create a project with a source and target connection; test each connection before saving.</td><td>1</td></tr>
+      <tr><td>FR-02</td><td>Store connection secrets outside the application database and never display them again.</td><td>1</td></tr>
+      <tr><td>FR-03</td><td>Discover and store a full inventory of source objects with sizes and dependencies.</td><td>1</td></tr>
+      <tr><td>FR-04</td><td>Profile source data per column and flag quality problems and sensitive columns.</td><td>2</td></tr>
+      <tr><td>FR-05</td><td>Propose a migration plan with approach, waves, estimates, risks and rollback.</td><td>2</td></tr>
+      <tr><td>FR-06</td><td>Generate a mapping spec covering entities, columns, types, transforms and keys.</td><td>1</td></tr>
+      <tr><td>FR-07</td><td>Verify every transform on sample data and show the result beside the mapping.</td><td>1</td></tr>
+      <tr><td>FR-08</td><td>Let reviewers approve, edit or reject each mapping record, in bulk or one by one.</td><td>1</td></tr>
+      <tr><td>FR-09</td><td>Propose value mappings for code columns and require business sign-off.</td><td>2</td></tr>
+      <tr><td>FR-10</td><td>Freeze and version the spec; generate DDL, job config and checks only from a frozen version.</td><td>1</td></tr>
+      <tr><td>FR-11</td><td>Convert views, procedures, functions and triggers and mark each as tested, compiled or manual.</td><td>3</td></tr>
+      <tr><td>FR-12</td><td>Execute the load through a pluggable engine and show live progress.</td><td>1</td></tr>
+      <tr><td>FR-13</td><td>Retry transient failures; diagnose other failures and stop for a person.</td><td>1</td></tr>
+      <tr><td>FR-14</td><td>Validate target against source and classify each mismatch by cause.</td><td>1</td></tr>
+      <tr><td>FR-15</td><td>Pause at gates for plan, mapping, execution and cutover; resume on decision.</td><td>1</td></tr>
+      <tr><td>FR-16</td><td>Resume any run after a process or machine failure without repeating finished steps.</td><td>1</td></tr>
+      <tr><td>FR-17</td><td>Record every executed statement, approval and state change in an append-only audit log.</td><td>1</td></tr>
+      <tr><td>FR-18</td><td>Export the inventory, spec, plan and reconciliation report as files.</td><td>2</td></tr>
+      <tr><td>FR-19</td><td>Add a database or engine by writing an adapter, with no change to agents.</td><td>3</td></tr>
+      <tr><td>FR-20</td><td>Keep source and target in sync by change capture until cutover, with reverse sync for rollback.</td><td>4</td></tr>
+      <tr><td>FR-21</td><td>Show cost, duration and model usage per migration and per agent.</td><td>2</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s4">
+  <span class="num">04</span>
+  <h2>Non-functional requirements</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>ID</th><th>Area</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td>NFR-01</td><td>Durability</td><td>A worker crash loses at most the step in flight; the run resumes from the last checkpoint.</td></tr>
+      <tr><td>NFR-02</td><td>Idempotency</td><td>Every node and every engine job can run twice without duplicating or corrupting data.</td></tr>
+      <tr><td>NFR-03</td><td>Scale, v1</td><td>One source up to 2,000 tables and 1 TB. Five concurrent migrations per deployment.</td></tr>
+      <tr><td>NFR-04</td><td>Source safety</td><td>Read-only. Profiling statements capped at 30 s and 10,000 sampled rows; at most 4 concurrent source sessions by default.</td></tr>
+      <tr><td>NFR-05</td><td>Responsiveness</td><td>API p95 under 300 ms for non-run endpoints. Progress events reach the UI within 2 s.</td></tr>
+      <tr><td>NFR-06</td><td>Data privacy</td><td>No unmasked value from a column flagged sensitive is sent to a model or written to a trace.</td></tr>
+      <tr><td>NFR-07</td><td>Secrets</td><td>Credentials exist only in the secrets manager and in adapter memory at call time.</td></tr>
+      <tr><td>NFR-08</td><td>Auditability</td><td>Any change on the target can be traced to a spec version, an approval and a trace id.</td></tr>
+      <tr><td>NFR-09</td><td>Portability</td><td>Model provider, database and engine are configuration; none is imported by agent code.</td></tr>
+      <tr><td>NFR-10</td><td>Cost control</td><td>A per-migration model budget; the run pauses for a person when it is exceeded.</td></tr>
+      <tr><td>NFR-11</td><td>Determinism</td><td>Re-running generation from the same frozen spec yields byte-identical DDL, config and checks.</td></tr>
+      <tr><td>NFR-12</td><td>Availability</td><td>Loss of the API or UI does not stop a running engine job. App database backed up daily with point-in-time recovery.</td></tr>
+      <tr><td>NFR-13</td><td>Observability</td><td>Every model call, tool call and SQL statement is linked to a migration id.</td></tr>
+      <tr><td>NFR-14</td><td>Quality gate</td><td>Prompt or model changes ship only if evaluation scores do not fall on the golden datasets.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s5">
+  <span class="num">05</span>
+  <h2>Architecture</h2>
+  <figure>
+    <div class="scroll pad">
+      <svg viewBox="0 0 930 580" role="img" aria-label="Web app calls the API, which enqueues runs to Redis. A worker hosts the LangGraph control plane with LangChain inside agent nodes. The worker writes checkpoints to Postgres, traces to Langfuse, calls the model provider and stores artifacts. It reaches databases only through connector and engine interfaces; rows move only between source, engines and target.">
+        <defs><marker id="m1" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path class="ah" d="M0,0 L8,4 L0,8 z"/></marker></defs>
+
+        <rect class="bx" x="20" y="20" width="652" height="48" rx="5"/>
+        <text class="t" x="36" y="42">Web app</text><text class="s" x="36" y="58">Next.js · wizard, mapping review, approvals, progress, reports</text>
+        <line class="a" x1="346" y1="68" x2="346" y2="108" marker-end="url(#m1)"/><text class="l" x="356" y="92">REST + SSE</text>
+
+        <rect class="bx" x="20" y="108" width="652" height="48" rx="5"/>
+        <text class="t" x="36" y="130">Backend API</text><text class="s" x="36" y="146">FastAPI · auth, roles, projects, run control, event stream, audit</text>
+        <line class="a" x1="672" y1="132" x2="750" y2="132" marker-end="url(#m1)"/><text class="l" x="711" y="126" text-anchor="middle">enqueue run</text>
+        <rect class="bx" x="750" y="110" width="160" height="44" rx="5"/>
+        <text class="t" x="762" y="130">Redis</text><text class="s" x="762" y="145">job queue, event pub/sub</text>
+
+        <line class="a" x1="346" y1="156" x2="346" y2="196" marker-end="url(#m1)"/><text class="l" x="356" y="180">worker picks up run</text>
+
+        <rect class="zone" x="20" y="196" width="652" height="188" rx="6"/>
+        <text class="s" x="32" y="214">WORKER · CONTROL PLANE</text>
+
+        <rect class="g" x="32" y="226" width="204" height="144" rx="5"/>
+        <text class="t" x="46" y="248">Supervisor StateGraph</text>
+        <text class="s" x="46" y="270">phase routing in code</text>
+        <text class="s" x="46" y="288">checkpoint after every node</text>
+        <text class="s" x="46" y="306">interrupt() approval gates</text>
+        <text class="s" x="46" y="324">Send() per-table fan-out</text>
+        <text class="s" x="46" y="342">budget and retry policy</text>
+
+        <line class="a" x1="236" y1="298" x2="300" y2="298" marker-end="url(#m1)"/><text class="l" x="268" y="291" text-anchor="middle">invokes</text>
+
+        <rect class="g" x="300" y="226" width="360" height="144" rx="5"/>
+        <text class="t" x="314" y="248">Agent subgraphs (9)</text>
+        <text class="s" x="314" y="264">code nodes, LLM nodes, verification nodes</text>
+        <rect class="c" x="312" y="280" width="336" height="76" rx="4"/>
+        <text class="t" x="326" y="302">LangChain inside LLM nodes</text>
+        <text class="s" x="326" y="320">chat model · prompts · structured output</text>
+        <text class="s" x="326" y="336">tools · embeddings · vector search</text>
+
+        <line class="a" x1="672" y1="218" x2="750" y2="218" marker-end="url(#m1)"/><text class="l" x="711" y="212" text-anchor="middle">checkpoints</text>
+        <rect class="bx" x="750" y="196" width="160" height="44" rx="5"/>
+        <text class="t" x="762" y="216">App Postgres</text><text class="s" x="762" y="231">state, audit, pgvector</text>
+
+        <line class="ad" x1="672" y1="266" x2="750" y2="266" marker-end="url(#m1)"/><text class="l" x="711" y="260" text-anchor="middle">traces</text>
+        <rect class="f" x="750" y="244" width="160" height="44" rx="5"/>
+        <text class="t" x="762" y="264">Langfuse</text><text class="s" x="762" y="279">traces, prompts, evals</text>
+
+        <line class="a" x1="672" y1="314" x2="750" y2="314" marker-end="url(#m1)"/><text class="l" x="711" y="308" text-anchor="middle">chat calls</text>
+        <rect class="bx" x="750" y="292" width="160" height="44" rx="5"/>
+        <text class="t" x="762" y="312">LLM provider</text><text class="s" x="762" y="327">any, set per agent</text>
+
+        <line class="a" x1="672" y1="362" x2="750" y2="362" marker-end="url(#m1)"/><text class="l" x="711" y="356" text-anchor="middle">artifacts</text>
+        <rect class="bx" x="750" y="340" width="160" height="44" rx="5"/>
+        <text class="t" x="762" y="360">Object store</text><text class="s" x="762" y="375">S3 compatible</text>
+
+        <line class="a" x1="346" y1="384" x2="346" y2="420" marker-end="url(#m1)"/><text class="l" x="356" y="406">interfaces only</text>
+
+        <rect class="bx" x="20" y="420" width="180" height="48" rx="5"/>
+        <text class="t" x="34" y="442">Connector + SQL guard</text><text class="s" x="34" y="458">one adapter per database</text>
+        <rect class="bx" x="250" y="420" width="200" height="48" rx="5"/>
+        <text class="t" x="264" y="442">Execution engine interface</text><text class="s" x="264" y="458">one adapter per tool</text>
+        <rect class="bx" x="500" y="420" width="172" height="48" rx="5"/>
+        <text class="t" x="514" y="442">Schema IR</text><text class="s" x="514" y="458">neutral schema model</text>
+        <rect class="bx" x="750" y="420" width="160" height="48" rx="5"/>
+        <text class="t" x="762" y="442">Secrets manager</text><text class="s" x="762" y="458">read by adapters only</text>
+
+        <line class="a" x1="110" y1="468" x2="110" y2="514" marker-end="url(#m1)"/><text class="l" x="120" y="495">schema, stats</text>
+        <line class="a" x1="350" y1="468" x2="350" y2="514" marker-end="url(#m1)"/><text class="l" x="360" y="495">submit job</text>
+
+        <rect class="bx" x="20" y="514" width="180" height="48" rx="5"/>
+        <text class="t" x="34" y="536">Source database</text><text class="s" x="34" y="552">read-only user</text>
+        <rect class="bx" x="250" y="514" width="200" height="48" rx="5"/>
+        <text class="t" x="264" y="536">Engines</text><text class="s" x="264" y="552">dump/load · Airbyte · Debezium</text>
+        <rect class="bx" x="500" y="514" width="172" height="48" rx="5"/>
+        <text class="t" x="514" y="536">Target database</text><text class="s" x="514" y="552">DDL only after approval</text>
+        <line class="a" x1="200" y1="538" x2="250" y2="538" marker-end="url(#m1)"/><text class="l" x="225" y="531" text-anchor="middle">rows</text>
+        <line class="a" x1="450" y1="538" x2="500" y2="538" marker-end="url(#m1)"/><text class="l" x="475" y="531" text-anchor="middle">rows</text>
+      </svg>
+    </div>
+    <figcaption>Blue is LangGraph, green is LangChain, amber is Langfuse. Rows move only along the bottom row. The worker sees schema and statistics; the API never touches source or target.</figcaption>
+  </figure>
+</section>
+
+<section id="s6">
+  <span class="num">06</span>
+  <h2>Component specifications</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Component</th><th>Responsibility</th><th>Scales by</th><th>Must not</th></tr></thead>
+    <tbody>
+      <tr><td>Web app</td><td>Project wizard, inventory browser, mapping review grid, gate screens, live run view, reports</td><td>Stateless replicas</td><td>Hold secrets; call databases</td></tr>
+      <tr><td>API</td><td>Authentication, role checks, CRUD, enqueue and resume runs, relay events over SSE, serve artifacts</td><td>Stateless replicas</td><td>Execute graph nodes in a request</td></tr>
+      <tr><td>Worker</td><td>Hosts the supervisor and agent graphs, runs nodes, writes checkpoints, publishes events</td><td>More worker processes; one run is owned by one worker at a time through a lease</td><td>Keep state only in memory</td></tr>
+      <tr><td>Redis</td><td>Job queue and event fan-out to API instances</td><td>Single instance in v1</td><td>Be a system of record</td></tr>
+      <tr><td>App Postgres</td><td>Projects, runs, spec records, approvals, audit, LangGraph checkpoints, column embeddings</td><td>Vertical; read replica later</td><td>Store credentials or source rows</td></tr>
+      <tr><td>Object store</td><td>Large artifacts: inventory, profiles, plans, DDL, job configs, reports</td><td>Provider managed</td><td>Store unmasked samples</td></tr>
+      <tr><td>Langfuse</td><td>Traces, prompt registry, datasets, scores, cost</td><td>Self-hosted stack</td><td>Receive raw sensitive values</td></tr>
+      <tr><td>Connectors</td><td>Introspection, profiling, masked sampling, guarded queries per database</td><td>One adapter per database</td><td>Run unparsed SQL</td></tr>
+      <tr><td>Engines</td><td>Extract and load; later change capture</td><td>One adapter per tool</td><td>Call a model</td></tr>
+      <tr><td>Secrets manager</td><td>Holds connection and provider credentials</td><td>Provider managed</td><td>Be readable by agents or the UI</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s7">
+  <span class="num">07</span>
+  <h2>Run lifecycle and failure handling</h2>
+  <ol>
+    <li>Operator starts a run. The API creates a <code>migrations</code> row with a thread id and enqueues a job.</li>
+    <li>A worker takes a lease on the run and invokes the supervisor graph with that thread id.</li>
+    <li>Each agent subgraph runs. After every node the state is checkpointed and an event is published.</li>
+    <li>At a gate the graph interrupts. The worker releases the lease; the run shows as waiting for approval.</li>
+    <li>An approver decides in the UI. The API records the approval and enqueues a resume job with the decision.</li>
+    <li>After Validation passes and the cutover gate is approved, the report is produced and the run completes.</li>
+  </ol>
+  <div class="scroll"><table>
+    <thead><tr><th>Run status</th><th>Meaning</th><th>Leaves by</th></tr></thead>
+    <tbody>
+      <tr><td>draft</td><td>Configured, not started</td><td>Start</td></tr>
+      <tr><td>running</td><td>A worker holds the lease</td><td>Gate, failure, completion, pause</td></tr>
+      <tr><td>waiting_approval</td><td>Parked at a gate</td><td>Approve or reject</td></tr>
+      <tr><td>paused</td><td>Stopped by a person or by budget</td><td>Resume or cancel</td></tr>
+      <tr><td>failed</td><td>A node failed past its retry limit</td><td>Retry from checkpoint or cancel</td></tr>
+      <tr><td>completed / cancelled</td><td>Terminal</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+  <div class="scroll"><table>
+    <thead><tr><th>Failure</th><th>Handling</th></tr></thead>
+    <tbody>
+      <tr><td>Worker dies</td><td>Lease expires; another worker resumes from the last checkpoint. Nodes are idempotent, so the step in flight is repeated safely.</td></tr>
+      <tr><td>Model call fails or times out</td><td>Retry with backoff, three times, then fail the node. Invalid structured output is retried once with the validation error included.</td></tr>
+      <tr><td>Model output fails verification</td><td>Repair loop, up to three attempts, then the item is marked unverified and sent to review.</td></tr>
+      <tr><td>Source or target unreachable</td><td>Retry with backoff for a bounded time, then pause the run.</td></tr>
+      <tr><td>Engine job fails</td><td>Transient errors retried by the Execution monitor; others diagnosed and escalated. Loads restart per table, not from the beginning.</td></tr>
+      <tr><td>Validation fails</td><td>Load defect returns to Execution; mapping defect returns to Schema mapping with the failing records; source data defect goes to a person.</td></tr>
+      <tr><td>Budget exceeded</td><td>Run pauses; a person raises the budget or cancels.</td></tr>
+      <tr><td>Spec edited after freeze</td><td>Not allowed. A new version is created and downstream artifacts are regenerated.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s8">
+  <span class="num">08</span>
+  <h2>Abstraction contracts</h2>
+  <div class="scroll"><pre><span class="cm"># Connector: one implementation per database</span>
+class Connector(Protocol):
+    def capabilities(self) -> Capabilities        <span class="cm"># cdc, snapshot, parallel read, max identifier length</span>
+    def dialect(self) -> str
+    def test(self) -> ConnectionCheck
+    def introspect(self, scope: Scope) -> SchemaIR
+    def profile(self, table: str, spec: ProfileSpec) -> TableProfile
+    def sample(self, table: str, n: int, mask: MaskPolicy) -> Rows
+    def query(self, sql: str, mode: Literal["read", "ddl"], approval_id: str | None) -> Result
+
+<span class="cm"># Execution engine: one implementation per tool</span>
+class ExecutionEngine(Protocol):
+    def capabilities(self) -> EngineCapabilities  <span class="cm"># full load, cdc, transforms, parallelism</span>
+    def plan(self, spec: MappingSpec, order: LoadOrder) -> JobConfig
+    def submit(self, job: JobConfig) -> str
+    def status(self, job_id: str) -> JobStatus    <span class="cm"># per-table rows, bytes, errors</span>
+    def cancel(self, job_id: str) -> None
+
+<span class="cm"># Schema IR: what agents reason over</span>
+SchemaIR   = { schemas: [Schema] }
+Table      = { name, columns: [Column], primary_key, foreign_keys, indexes, row_count, bytes }
+Column     = { name, logical_type, nullable, default, source_type, comment }
+LogicalType= integer(bits) | decimal(p, s) | float(bits) | string(n) | text | boolean
+           | date | time | timestamp(tz) | binary | json | uuid | enum(values) | unknown(raw)
+Routine    = { kind: view | procedure | function | trigger, name, body, depends_on }</pre></div>
+  <div class="scroll"><table>
+    <thead><tr><th>SQL guard rule</th><th>Applies to</th></tr></thead>
+    <tbody>
+      <tr><td>Statement must parse with sqlglot in the connection's dialect</td><td>Every statement</td></tr>
+      <tr><td>Single statement only; <code>SELECT</code> only; timeout and row limit injected</td><td>Source</td></tr>
+      <tr><td>DDL requires an approval id bound to a frozen spec version</td><td>Target</td></tr>
+      <tr><td><code>DROP</code>, <code>TRUNCATE</code>, unbounded <code>DELETE</code> or <code>UPDATE</code>, grants and user management are refused</td><td>Agents, always</td></tr>
+      <tr><td>Statement, agent, trace id and result summary written to the audit log</td><td>Every statement</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s9">
+  <span class="num">09</span>
+  <h2>Agent specifications</h2>
+  <p>Model tiers: <span class="tag m">strong</span> for reasoning and code, <span class="tag s">fast</span> for classification and summaries. The actual model per agent is configuration. Every agent writes its artifact to the object store and returns only a reference in graph state.</p>
+
+  <div class="agent">
+    <div class="agent-title"><span class="no">0</span><h3>Supervisor</h3></div>
+    <div class="scroll"><table class="kv"><tbody>
+      <tr><td>Purpose</td><td>Run phases in order, enforce gates, route rework, keep the run durable.</td></tr>
+      <tr><td>Inputs</td><td>Migration id, connection refs, settings, approval decisions.</td></tr>
+      <tr><td>Outputs</td><td>Updated <code>MigrationState</code>; events; audit entries.</td></tr>
+      <tr><td>Graph</td><td>One node per agent subgraph, four gate nodes, conditional edges after gates and after Validation.</td></tr>
+      <tr><td>Model</td><td>None. Routing is code.</td></tr>
+      <tr><td>Guardrails</td><td>A gate cannot be passed without an approval row from a user with the Approver role. Budget check before each agent.</td></tr>
+      <tr><td>Failure</td><td>Marks the run failed with the failing node; retry resumes from the checkpoint.</td></tr>
+      <tr><td>Done when</td><td>Report artifact exists and status is completed.</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-title"><span class="no">1</span><h3>Discovery</h3></div>
+    <div class="scroll"><table class="kv"><tbody>
+      <tr><td>Purpose</td><td>Produce a complete, neutral inventory of the source.</td></tr>
+      <tr><td>Inputs</td><td>Source connection ref, scope (schemas to include or exclude).</td></tr>
+      <tr><td>Outputs</td><td><code>inventory</code>: Schema IR, sizes, dependency graph, per-table purpose note, unused-object flags.</td></tr>
+      <tr><td>Graph</td><td>list_schemas → introspect (fan-out per schema) → build_dependency_graph → describe_tables → write_inventory</td></tr>
+      <tr><td>Tools</td><td><code>introspect</code>, <code>capabilities</code>, catalogue size queries.</td></tr>
+      <tr><td>Model</td><td><span class="tag s">fast</span> for table purpose notes from names, columns and comments. Everything else is code.</td></tr>
+      <tr><td>Guardrails</td><td>Reads catalogue only; no table data. Purpose notes are labelled as inferred.</td></tr>
+      <tr><td>Failure</td><td>A schema that cannot be read is recorded as skipped with the error; the run continues and the gap is shown.</td></tr>
+      <tr><td>Done when</td><td>Object counts in the inventory equal catalogue counts.</td></tr>
+      <tr><td>Evaluation</td><td>Inventory completeness against a known sample schema: must be 100%.</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-title"><span class="no">2</span><h3>Profiling</h3></div>
+    <div class="scroll"><table class="kv"><tbody>
+      <tr><td>Purpose</td><td>Measure data condition and find sensitive columns before design.</td></tr>
+      <tr><td>Inputs</td><td>Inventory, profiling settings (sample size, limits).</td></tr>
+      <tr><td>Outputs</td><td><code>profile</code>: per-column statistics, issue list with severity, sensitivity class per column, distinct values of low-cardinality columns.</td></tr>
+      <tr><td>Graph</td><td>plan_profiles → profile_table (fan-out per table, bounded concurrency) → classify_columns → detect_issues → write_profile</td></tr>
+      <tr><td>Tools</td><td><code>profile</code>, masked <code>sample</code>.</td></tr>
+      <tr><td>Model</td><td><span class="tag s">fast</span> for sensitivity classification from names, patterns and masked shapes; for plain-language issue explanations.</td></tr>
+      <tr><td>Guardrails</td><td>Pattern rules run first and their result cannot be downgraded by the model. Limits from NFR-04. Only statistics and masked shapes reach the model.</td></tr>
+      <tr><td>Failure</td><td>A table that exceeds the time limit is profiled on a smaller sample, then marked partial.</td></tr>
+      <tr><td>Done when</td><td>Every in-scope column has statistics or a recorded reason for none.</td></tr>
+      <tr><td>Evaluation</td><td>Recall of sensitive columns on a labelled dataset; recall matters more than precision here.</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-title"><span class="no">3</span><h3>Strategy</h3><span class="tag h">gate: plan</span></div>
+    <div class="scroll"><table class="kv"><tbody>
+      <tr><td>Purpose</td><td>Propose approach, wave order, estimates, risks and rollback.</td></tr>
+      <tr><td>Inputs</td><td>Inventory, profile, downtime budget, engine capabilities, constraints entered by the operator.</td></tr>
+      <tr><td>Outputs</td><td><code>plan</code>: approach, waves with tables, duration estimate with assumptions, risk register, rollback approach, cutover outline.</td></tr>
+      <tr><td>Graph</td><td>compute_facts → order_waves → propose_plan → check_plan → write_plan → gate</td></tr>
+      <tr><td>Tools</td><td>None against databases. Reads artifacts only.</td></tr>
+      <tr><td>Model</td><td><span class="tag m">strong</span> for the approach decision and risk register. Wave order comes from the dependency graph in code.</td></tr>
+      <tr><td>Guardrails</td><td><code>check_plan</code> rejects a plan that uses an ability the engine lacks, breaks dependency order, or exceeds the downtime budget on its own estimate.</td></tr>
+      <tr><td>Failure</td><td>If no plan passes checks after three attempts, the facts and failed checks are shown for a person to plan by hand.</td></tr>
+      <tr><td>Done when</td><td>An approver accepts the plan.</td></tr>
+      <tr><td>Evaluation</td><td>Rubric scoring by reviewers; later, estimate against actual duration.</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-title"><span class="no">4a</span><h3>Schema mapper</h3></div>
+    <div class="scroll"><table class="kv"><tbody>
+      <tr><td>Purpose</td><td>Produce the verified mapping spec.</td></tr>
+      <tr><td>Inputs</td><td>Source IR, target IR (supplied or like-for-like), profile.</td></tr>
+      <tr><td>Outputs</td><td><code>mapping_records</code> rows: target column, source columns, kind, transform, types, null handling, confidence, verified flag, rationale, status. Key plan and ID crosswalk design. Target DDL after freeze.</td></tr>
+      <tr><td>Graph</td><td>rule_pass → generate_candidates → rank (fan-out per table) → verify → repair loop → assemble → review → freeze → generate_ddl</td></tr>
+      <tr><td>Tools</td><td>Vector search over column embeddings, <code>sample</code> (masked), <code>query</code> on a scratch schema for transform tests.</td></tr>
+      <tr><td>Model</td><td>Embeddings for candidates. <span class="tag m">strong</span> for ranking and transforms, with structured output.</td></tr>
+      <tr><td>Guardrails</td><td>Transforms must parse and run on samples; checks for truncation, null violations, uniqueness loss, cast failures. Model confidence is capped when verification is missing. Unmapped required target columns block the freeze.</td></tr>
+      <tr><td>Failure</td><td>Items that fail repair are kept as unverified and sorted to the top of review.</td></tr>
+      <tr><td>Done when</td><td>Every target column has an approved record or an approved reason to be empty.</td></tr>
+      <tr><td>Evaluation</td><td>Match precision and recall; transform correctness by execution; count of wrong mappings above 0.8 confidence; share edited by reviewers.</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-title"><span class="no">4b</span><h3>Value mapper</h3><span class="tag h">gate: mapping</span></div>
+    <div class="scroll"><table class="kv"><tbody>
+      <tr><td>Purpose</td><td>Map codes and categories whose meaning differs between systems.</td></tr>
+      <tr><td>Inputs</td><td>Mapping records of kind lookup, distinct values and frequencies from the profile, target allowed values.</td></tr>
+      <tr><td>Outputs</td><td><code>value_maps</code>: source value, target value, frequency, reason, status.</td></tr>
+      <tr><td>Graph</td><td>select_code_columns → exact_match → propose_matches → flag_unmatched → review → attach_to_spec</td></tr>
+      <tr><td>Model</td><td><span class="tag s">fast</span> for proposals.</td></tr>
+      <tr><td>Guardrails</td><td>Nothing is auto-approved. Values with no match must get an explicit decision: map, default, or reject rows.</td></tr>
+      <tr><td>Failure</td><td>Too many distinct values (over a set limit) means the column is not a code column; it is returned to the Schema mapper.</td></tr>
+      <tr><td>Done when</td><td>Every source value seen in the data has an approved outcome.</td></tr>
+      <tr><td>Evaluation</td><td>Accuracy against labelled crosswalks.</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-title"><span class="no">5</span><h3>Code conversion</h3></div>
+    <div class="scroll"><table class="kv"><tbody>
+      <tr><td>Purpose</td><td>Translate views, procedures, functions and triggers to the target dialect.</td></tr>
+      <tr><td>Inputs</td><td>Routines from the inventory, frozen spec (for renamed objects), target dialect.</td></tr>
+      <tr><td>Outputs</td><td><code>converted_code</code>: per object the new body, status (tested, compiled, manual), notes on behaviour differences.</td></tr>
+      <tr><td>Graph</td><td>order_by_dependency → transpile_rules → convert_llm → compile_on_scratch → repair loop → run_tests_if_any → classify → write</td></tr>
+      <tr><td>Tools</td><td>sqlglot transpile, <code>query</code> in DDL mode on a scratch schema only.</td></tr>
+      <tr><td>Model</td><td><span class="tag m">strong</span> for what rules cannot translate.</td></tr>
+      <tr><td>Guardrails</td><td>Never deployed to the real target schema by this agent. "Compiled" is never reported as "tested".</td></tr>
+      <tr><td>Failure</td><td>After three failed repairs the object is marked manual with the last error.</td></tr>
+      <tr><td>Done when</td><td>Every routine has a status.</td></tr>
+      <tr><td>Evaluation</td><td>Compile rate; behavioural match on routines that have recorded inputs and outputs.</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-title"><span class="no">6</span><h3>Pipeline builder</h3><span class="tag h">gate: execute</span></div>
+    <div class="scroll"><table class="kv"><tbody>
+      <tr><td>Purpose</td><td>Turn the frozen spec and plan into engine job configuration.</td></tr>
+      <tr><td>Inputs</td><td>Frozen spec version, plan, engine capabilities.</td></tr>
+      <tr><td>Outputs</td><td><code>job_config</code> per wave, load order, pre-load and post-load steps (constraints, indexes, sequences).</td></tr>
+      <tr><td>Graph</td><td>check_capabilities → build_load_order → engine.plan → dry_run_validate → write → gate</td></tr>
+      <tr><td>Model</td><td>None by default.</td></tr>
+      <tr><td>Guardrails</td><td>Output is deterministic from the spec (NFR-11). A transform the engine cannot express is moved to a post-load SQL step or reported, never dropped.</td></tr>
+      <tr><td>Failure</td><td>Capability gaps stop the run with a list of what the chosen engine cannot do.</td></tr>
+      <tr><td>Done when</td><td>Dry-run validation passes and an approver allows execution.</td></tr>
+      <tr><td>Evaluation</td><td>Snapshot tests: same spec, same config.</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-title"><span class="no">7</span><h3>Execution monitor</h3></div>
+    <div class="scroll"><table class="kv"><tbody>
+      <tr><td>Purpose</td><td>Run jobs, report progress, handle and explain failures.</td></tr>
+      <tr><td>Inputs</td><td>Job configs, approval id.</td></tr>
+      <tr><td>Outputs</td><td><code>jobs</code> rows with per-table rows, bytes, duration, errors; diagnosis notes.</td></tr>
+      <tr><td>Graph</td><td>apply_ddl → submit → poll loop → on_error: classify → retry | diagnose → escalate → post_load_steps</td></tr>
+      <tr><td>Tools</td><td><code>submit</code>, <code>status</code>, <code>cancel</code>; target <code>query</code> in DDL mode with the approval id.</td></tr>
+      <tr><td>Model</td><td><span class="tag s">fast</span> to turn an engine error and context into a probable cause and suggested fix.</td></tr>
+      <tr><td>Guardrails</td><td>Retries only errors on a transient list. Never edits data or config to make a job pass.</td></tr>
+      <tr><td>Failure</td><td>Unclassified errors pause the run with the diagnosis attached.</td></tr>
+      <tr><td>Done when</td><td>All tables in the wave report loaded and post-load steps succeed.</td></tr>
+      <tr><td>Evaluation</td><td>Diagnosis accuracy on a library of injected failures.</td></tr>
+    </tbody></table></div>
+  </div>
+
+  <div class="agent">
+    <div class="agent-title"><span class="no">8</span><h3>Validation</h3><span class="tag h">gate: cutover</span></div>
+    <div class="scroll"><table class="kv"><tbody>
+      <tr><td>Purpose</td><td>Prove the target matches the source under the spec, or locate every difference.</td></tr>
+      <tr><td>Inputs</td><td>Frozen spec, both connection refs, job results.</td></tr>
+      <tr><td>Outputs</td><td><code>reconciliation</code>: per-table and per-column check results, mismatch samples (keys only), defect class per mismatch, summary for sign-off.</td></tr>
+      <tr><td>Graph</td><td>generate_checks → run_checks (fan-out per table) → drill_down_mismatches → classify_defects → explain → write_report → route</td></tr>
+      <tr><td>Checks</td><td>Row counts; column aggregates; hash comparison by key range with bisection to find differing rows; reference integrity; transform spot checks; value-map coverage.</td></tr>
+      <tr><td>Model</td><td><span class="tag s">fast</span> for explanations. Pass or fail is decided by code only.</td></tr>
+      <tr><td>Guardrails</td><td>Checks are generated from the spec, not written by the model. A failed check can never be waived by an agent.</td></tr>
+      <tr><td>Failure</td><td>Checks that cannot run are reported as not verified, which blocks the cutover gate unless an approver accepts them by name.</td></tr>
+      <tr><td>Done when</td><td>All checks pass or each exception is accepted by an approver.</td></tr>
+      <tr><td>Evaluation</td><td>Detection rate on targets with injected defects: missing rows, altered values, wrong mapping.</td></tr>
+    </tbody></table></div>
+  </div>
+</section>
+
+<section id="s10">
+  <span class="num">10</span>
+  <h2>Data model</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Table</th><th>Key columns</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>users</td><td>id, email, role, status</td><td>Identity comes from the OIDC provider</td></tr>
+      <tr><td>projects</td><td>id, name, owner_id, source_conn_id, target_conn_id</td><td></td></tr>
+      <tr><td>connections</td><td>id, kind, dialect, host_meta, secret_ref, last_check</td><td>No credentials stored</td></tr>
+      <tr><td>migrations</td><td>id, project_id, thread_id, status, phase, engine, budget, spent, lease_owner, lease_until</td><td>One row per run</td></tr>
+      <tr><td>artifacts</td><td>id, migration_id, type, version, uri, sha256, agent, trace_id, created_at</td><td>Immutable</td></tr>
+      <tr><td>spec_versions</td><td>id, migration_id, version, frozen_at, frozen_by</td><td>Frozen versions never change</td></tr>
+      <tr><td>mapping_records</td><td>id, spec_version_id, target_col, source_cols, kind, transform, confidence, verified, status, edited_by</td><td>Review grid reads this</td></tr>
+      <tr><td>value_maps</td><td>id, mapping_record_id, source_value, target_value, frequency, status</td><td></td></tr>
+      <tr><td>approvals</td><td>id, migration_id, gate, decision, spec_version_id, user_id, comment, at</td><td>Append-only</td></tr>
+      <tr><td>jobs</td><td>id, migration_id, engine, wave, config_uri, status, metrics</td><td></td></tr>
+      <tr><td>check_results</td><td>id, migration_id, table, check, status, detail_uri, defect_class</td><td></td></tr>
+      <tr><td>audit_log</td><td>id, at, actor, migration_id, action, target, statement_hash, trace_id</td><td>Append-only; no update or delete grants</td></tr>
+      <tr><td>column_embeddings</td><td>migration_id, side, column_ref, vector</td><td>pgvector</td></tr>
+      <tr><td>checkpoints</td><td>managed by the LangGraph Postgres checkpointer</td><td>Separate schema</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s11">
+  <span class="num">11</span>
+  <h2>API</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Method and path</th><th>Purpose</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td>POST /connections</td><td>Create a connection; secret goes to the secrets manager</td><td>Operator</td></tr>
+      <tr><td>POST /connections/{id}/test</td><td>Check reachability and privileges</td><td>Operator</td></tr>
+      <tr><td>POST /projects</td><td>Create a project</td><td>Operator</td></tr>
+      <tr><td>POST /projects/{id}/migrations</td><td>Create and configure a run</td><td>Operator</td></tr>
+      <tr><td>POST /migrations/{id}/start</td><td>Enqueue the run</td><td>Operator</td></tr>
+      <tr><td>POST /migrations/{id}/pause · /resume · /cancel · /retry</td><td>Run control</td><td>Operator</td></tr>
+      <tr><td>GET /migrations/{id}</td><td>Status, phase, cost, current gate</td><td>Viewer</td></tr>
+      <tr><td>GET /migrations/{id}/events</td><td>Server-sent event stream of progress</td><td>Viewer</td></tr>
+      <tr><td>GET /migrations/{id}/artifacts</td><td>List artifacts; fetch one by id</td><td>Viewer</td></tr>
+      <tr><td>GET /migrations/{id}/mappings</td><td>Paged, filterable mapping records</td><td>Viewer</td></tr>
+      <tr><td>PATCH /mappings/{id}</td><td>Edit, approve or reject one record; triggers re-verification</td><td>Operator</td></tr>
+      <tr><td>POST /migrations/{id}/mappings/bulk</td><td>Bulk approve by filter</td><td>Operator</td></tr>
+      <tr><td>POST /migrations/{id}/gates/{gate}</td><td>Approve or reject a gate with a comment</td><td>Approver</td></tr>
+      <tr><td>GET /migrations/{id}/report</td><td>Reconciliation report, HTML or JSON</td><td>Viewer</td></tr>
+      <tr><td>GET /audit</td><td>Filterable audit log</td><td>Viewer</td></tr>
+      <tr><td>GET/PUT /admin/settings</td><td>Models per agent, limits, engines, retention</td><td>Admin</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s12">
+  <span class="num">12</span>
+  <h2>Tech stack</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Area</th><th>Choice</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Language, backend</td><td>Python 3.12, Pydantic v2</td><td>Native home of LangGraph and LangChain; typed artifacts</td></tr>
+      <tr><td>Orchestration</td><td>LangGraph with the Postgres checkpointer</td><td>Durable graphs, interrupts, fan-out</td></tr>
+      <tr><td>LLM building blocks</td><td>LangChain core: chat models, prompts, structured output, tools, embeddings</td><td>Provider neutrality</td></tr>
+      <tr><td>Tracing and evals</td><td>Langfuse, self-hosted</td><td>Traces, prompt registry, datasets, cost; data stays in the deployment</td></tr>
+      <tr><td>API</td><td>FastAPI, Uvicorn, SSE</td><td>Async, typed, simple streaming</td></tr>
+      <tr><td>Workers and queue</td><td>Celery with Redis</td><td>Well known; the graph holds the durable state, the queue only dispatches</td></tr>
+      <tr><td>App database</td><td>PostgreSQL 16 with pgvector; SQLAlchemy 2; Alembic</td><td>One database for state, checkpoints and vectors</td></tr>
+      <tr><td>SQL tooling</td><td>sqlglot</td><td>Parsing for the guard, dialect translation</td></tr>
+      <tr><td>Database drivers</td><td>psycopg 3, mysqlclient or PyMySQL; others per adapter</td><td></td></tr>
+      <tr><td>Object store</td><td>S3 API; MinIO locally</td><td>Portable</td></tr>
+      <tr><td>Secrets</td><td>Cloud secret manager or Vault; env file locally</td><td>Keeps credentials out of the database</td></tr>
+      <tr><td>Auth</td><td>OIDC; Keycloak when self-hosted</td><td>No password handling in the app</td></tr>
+      <tr><td>Frontend</td><td>Next.js, TypeScript, Tailwind, shadcn/ui, TanStack Query and Table</td><td>The review grid is the core screen and needs a strong table</td></tr>
+      <tr><td>Graph view</td><td>React Flow</td><td>Run and dependency visualisation</td></tr>
+      <tr><td>Engines</td><td>Native dump and load first; Airbyte; Debezium with Kafka</td><td>In that order of build</td></tr>
+      <tr><td>System telemetry</td><td>OpenTelemetry, Prometheus, Grafana, JSON logs</td><td>Separate from model tracing</td></tr>
+      <tr><td>Packaging</td><td>Docker; Compose first, Kubernetes with Helm later</td><td></td></tr>
+      <tr><td>CI</td><td>GitHub Actions: lint, type check, tests, eval run</td><td></td></tr>
+      <tr><td>Quality tools</td><td>ruff, mypy, pytest, Testcontainers, Playwright</td><td></td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Exact versions are pinned when the repository is scaffolded. LangGraph, LangChain and Langfuse change quickly; pin them together and upgrade deliberately.</p>
+</section>
+
+<section id="s13">
+  <span class="num">13</span>
+  <h2>Security</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Threat</th><th>Control</th></tr></thead>
+    <tbody>
+      <tr><td>Credential leak through prompts, traces or logs</td><td>Agents hold connection ids only; adapters fetch secrets at call time; log and trace scrubbing</td></tr>
+      <tr><td>Sensitive data sent to a model provider</td><td>Statistics by default; connector-side masking; sensitivity flags tighten masking; optional self-hosted model</td></tr>
+      <tr><td>Model writes destructive SQL</td><td>SQL guard, read-only source user, scratch schema for tests, approval-bound DDL</td></tr>
+      <tr><td>Prompt injection from data or comments in the source</td><td>Source text is passed as data, never as instructions; model output is typed and verified; no tool lets a model reach the network or file system</td></tr>
+      <tr><td>Approval bypass</td><td>Gate nodes check a signed approval row; role enforced by the API; four-eyes rule on spec edits</td></tr>
+      <tr><td>Tampering with history</td><td>Append-only audit and approvals; artifacts stored with hashes</td></tr>
+      <tr><td>Network exposure</td><td>TLS everywhere; workers in the same network as the databases; only the web app and API are public</td></tr>
+      <tr><td>Retention and privacy rules</td><td>Configurable retention for traces, samples and artifacts; deletion per project</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s14">
+  <span class="num">14</span>
+  <h2>Observability and evaluation</h2>
+  <ul>
+    <li>One Langfuse trace per agent invocation, tagged with migration id, agent, spec version and model.</li>
+    <li>Prompts live in the Langfuse registry and are loaded by name and label; the prompt version is recorded on each trace.</li>
+    <li>Cost is summed per migration and compared with the budget before each agent starts.</li>
+    <li>Golden datasets: at least three schema pairs with hand-written mappings, a labelled sensitive-column set, labelled crosswalks, a failure library, and targets with injected defects.</li>
+    <li>CI runs the evaluations on every prompt or model change and blocks the merge when a score falls.</li>
+    <li>Reviewer edits in production are written back as scores, so real corrections become new evaluation cases.</li>
+    <li>System health (queue depth, worker leases, API latency, engine throughput) goes to Prometheus, not Langfuse.</li>
+  </ul>
+</section>
+
+<section id="s15">
+  <span class="num">15</span>
+  <h2>Deployment</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Environment</th><th>Shape</th></tr></thead>
+    <tbody>
+      <tr><td>Local</td><td>One Compose file: web, api, worker, Postgres, Redis, MinIO, Langfuse, plus sample MySQL and PostgreSQL databases with seed data</td></tr>
+      <tr><td>Single-team server</td><td>Same Compose stack on one VM, managed Postgres, real secrets manager, OIDC</td></tr>
+      <tr><td>Production</td><td>Kubernetes: web and API replicas, a worker pool, managed Postgres and Redis, object storage</td></tr>
+      <tr><td>Customer network</td><td>Hosted control plane; workers, connectors and engines run inside the customer network and connect outbound only</td></tr>
+    </tbody>
+  </table></div>
+  <div class="scroll"><pre>apps/web/            Next.js UI
+apps/api/            FastAPI service
+platform/graph/      supervisor, state, gates
+platform/agents/     one package per agent
+platform/connectors/ protocol, mysql/, postgres/
+platform/engines/    protocol, native/
+platform/ir/         schema model, type maps
+platform/guard/      SQL guard
+platform/specs/      spec model; DDL, config and check generators
+evals/               datasets and runners
+samples/             source and target schemas with seed data
+deploy/              compose, later helm
+docs/</pre></div>
+</section>
+
+<section id="s16">
+  <span class="num">16</span>
+  <h2>Testing</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Level</th><th>What is tested</th><th>How</th></tr></thead>
+    <tbody>
+      <tr><td>Unit</td><td>Type maps, SQL guard rules, generators, load ordering</td><td>pytest; guard has an explicit list of statements that must be refused</td></tr>
+      <tr><td>Contract</td><td>Every connector and engine adapter against the same suite</td><td>Testcontainers with real databases</td></tr>
+      <tr><td>Graph</td><td>Routing, gates, resume after a kill, idempotent re-run of each node</td><td>Recorded model responses; no live model in CI</td></tr>
+      <tr><td>Evaluation</td><td>Model-dependent quality</td><td>Langfuse datasets, scheduled and on prompt change</td></tr>
+      <tr><td>End to end</td><td>Sample MySQL to PostgreSQL migration through the UI</td><td>Playwright against the Compose stack</td></tr>
+      <tr><td>Fault injection</td><td>Worker kill, lost connection, engine failure, corrupted target</td><td>Scripted in the Compose stack</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="s17">
+  <span class="num">17</span>
+  <h2>Risks and open decisions</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Risk</th><th>Why it matters</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Confident wrong mappings</td><td>They pass review unnoticed and validation then checks against a wrong spec</td><td>Execution checks, confidence capping, a dedicated metric, value sign-off</td></tr>
+      <tr><td>Abstraction too early</td><td>Interfaces designed before a second adapter exists are usually wrong</td><td>Freeze contracts only after the second database and second engine</td></tr>
+      <tr><td>Reviewer fatigue</td><td>Thousands of records get bulk-approved</td><td>Sort by risk, auto-approve only rule-pass records, show verification evidence</td></tr>
+      <tr><td>Model cost at scale</td><td>Per-column calls on large schemas add up</td><td>Rule pass first, batching, fast tier where possible, budget pause</td></tr>
+      <tr><td>Library churn</td><td>Three fast-moving dependencies</td><td>Pin together, wrap behind thin internal modules</td></tr>
+      <tr><td>Data leaving the network</td><td>Blocks adoption in regulated settings</td><td>Masking, statistics-only prompts, self-hosted model option</td></tr>
+      <tr><td>Scope</td><td>Ten agents and five phases is a large build for a small team</td><td>Phase 1 is four agents and one path; nothing else starts before it works</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>Open: first source and target pair. This document assumes MySQL to PostgreSQL.</li>
+    <li>Open: may an agent propose the target schema, or is it always supplied?</li>
+    <li>Open: hosted for many organisations, or deployed per customer?</li>
+    <li>Open: which model providers are allowed for the first users' data?</li>
+  </ul>
+</section>
+
+<section id="s18">
+  <span class="num">18</span>
+  <h2>Roadmap</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Phase</th><th>Scope</th><th>Exit test</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Schema IR, MySQL and PostgreSQL connectors, SQL guard, Supervisor, Discovery, Schema mapper, native engine, Execution monitor (basic), Validation, review UI, tracing</td><td>Sample database migrates end to end, a person approves the mapping, validation passes, and a killed worker resumes</td></tr>
+      <tr><td>2</td><td>Profiling, Value mapper, Strategy, exports, cost view, golden datasets in CI</td><td>Mapping quality is scored on every prompt change</td></tr>
+      <tr><td>3</td><td>Code conversion, Pipeline builder, Airbyte adapter, third database</td><td>A second engine runs the same frozen spec with no agent change</td></tr>
+      <tr><td>4</td><td>Debezium change capture, cutover gate, reverse sync</td><td>Sample database migrates under write load with no downtime and can roll back</td></tr>
+      <tr><td>5</td><td>Multi-organisation, in-network workers, more connectors</td><td>A second team completes a migration without help</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</div>
+</body>
+</html>
