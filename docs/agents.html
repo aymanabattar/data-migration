@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Migration Agents Reference</title>
+<style>
+:root {
+  --bg: #f6f7fb; --surface: #ffffff; --fg: #161a26; --muted: #5b6378; --line: #d5d9e6;
+  --accent: #4553c9; --accent-bg: #e9ebfb;
+  --ok: #0f7f76; --ok-bg: #dff3f0;
+  --warn: #b25e09; --warn-bg: #fbeeda;
+  --gate: #b3266b; --gate-bg: #fbe4ef;
+  --display: "Space Grotesk", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --body: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #10131c; --surface: #181c28; --fg: #e6e9f2; --muted: #9aa3b8; --line: #2d3345;
+    --accent: #98a3ff; --accent-bg: #23284d;
+    --ok: #54cfc3; --ok-bg: #123a37;
+    --warn: #f0ad5a; --warn-bg: #3d2c12;
+    --gate: #f283b6; --gate-bg: #40182b;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.6; }
+.page { max-width: 940px; margin: 0 auto; padding: 40px 16px 72px; display: flex; flex-direction: column; gap: 44px; }
+header { display: flex; flex-direction: column; gap: 12px; }
+h1 { font-family: var(--display); font-size: 32px; line-height: 1.15; margin: 0; }
+h2 { font-family: var(--display); font-size: 21px; line-height: 1.25; margin: 0; }
+h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; font-weight: 600; }
+p { margin: 0; max-width: 70ch; }
+.lede { font-size: 17px; color: var(--muted); }
+.eyebrow { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 620px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; }
+.agent { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px 24px; display: flex; flex-direction: column; gap: 18px; break-inside: avoid; }
+.agent-head { display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.agent-title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.no { font-family: var(--mono); font-size: 13px; color: var(--accent); background: var(--accent-bg); padding: 2px 8px; border-radius: 4px; }
+.role { color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.gate { color: var(--gate); border-color: var(--gate); background: var(--gate-bg); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px 28px; }
+.grid > div { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.wide { grid-column: 1 / -1; }
+.conf { font-family: var(--mono); font-size: 11px; padding: 0 5px; border-radius: 3px; border: 1px solid; white-space: nowrap; margin-right: 4px; }
+.conf.l { color: var(--ok); border-color: var(--ok); background: var(--ok-bg); }
+.conf.g { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+.limit { font-size: 13.5px; color: var(--muted); border-left: 2px solid var(--line); padding-left: 12px; }
+.note { font-size: 13px; color: var(--muted); }
+code { font-family: var(--mono); font-size: .9em; }
+@media print {
+  body { background: #fff; font-size: 12px; }
+  .page { padding: 0; gap: 24px; max-width: none; }
+  .agent { border-color: #999; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <span class="eyebrow">AGENT REFERENCE · DRAFT v0.1</span>
+  <h1>Migration Agents Reference</h1>
+  <p class="lede">What each of the ten agents does, which step of an industry migration project it supports, and what difference it should make.</p>
+  <p class="note">Nothing here has been built or measured yet. Impact statements are expectations, each marked <span class="conf l">Likely</span> for a strong inference from how migrations are done today, or <span class="conf g">Guessing</span> where there is no evidence yet. No percentages are quoted because none have been measured.</p>
+</header>
+
+<section>
+  <h2>Agents against the standard migration process</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Industry phase</th><th>What teams do by hand today</th><th>Agent</th></tr></thead>
+      <tbody>
+        <tr><td>Programme control</td><td>Project plan, stage gates, go/no-go meetings, status tracking</td><td>0 Supervisor</td></tr>
+        <tr><td>Discovery and assessment</td><td>Inventory spreadsheets, dependency interviews, sizing</td><td>1 Discovery</td></tr>
+        <tr><td>Data quality assessment</td><td>Profiling queries, data classification, cleansing backlog</td><td>2 Profiling</td></tr>
+        <tr><td>Planning and design</td><td>Approach selection, wave plan, cutover and rollback plan</td><td>3 Strategy</td></tr>
+        <tr><td>Source-to-target mapping</td><td>Mapping workbook written column by column by analysts</td><td>4a Schema mapper</td></tr>
+        <tr><td>Reference data mapping</td><td>Code crosswalk tables agreed with business owners</td><td>4b Value mapper</td></tr>
+        <tr><td>Code and logic conversion</td><td>Rewriting procedures, views, triggers, ETL SQL</td><td>5 Code conversion</td></tr>
+        <tr><td>Build</td><td>Writing migration scripts or configuring an ETL tool</td><td>6 Pipeline builder</td></tr>
+        <tr><td>Mock runs and execution</td><td>Running loads, watching logs, fixing and restarting</td><td>7 Execution monitor</td></tr>
+        <tr><td>Validation and reconciliation</td><td>Count and sum comparisons, sampling, sign-off evidence</td><td>8 Validation</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>The agents</h2>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">0</span><h2>Supervisor</h2></div>
+      <p class="role">Runs the migration as a fixed sequence of phases and stops at every approval gate.</p>
+      <div class="chips"><span class="chip">LLM use: none</span><span class="chip">Input: events and approvals</span><span class="chip">Output: run state, audit trail</span></div>
+    </div>
+    <div class="grid">
+      <div><h3>What it does</h3><ul>
+        <li>Starts each agent in order and passes it references to earlier outputs</li>
+        <li>Saves progress after every step so a crashed run resumes where it stopped</li>
+        <li>Pauses at four gates (plan, mapping, execute, cutover) until a person decides</li>
+        <li>Sends work back to the right phase when validation finds a defect</li>
+      </ul></div>
+      <div><h3>Industry process</h3><p>Migration programme governance: stage gates, go/no-go decisions and the cutover runbook. Today this lives in project plans, meeting minutes and a runbook spreadsheet kept by a migration lead.</p></div>
+      <div><h3>Most useful when</h3><ul>
+        <li>Runs last hours or days and must survive restarts</li>
+        <li>Regulated work needs proof of who approved what</li>
+        <li>Several migrations run at once</li>
+      </ul></div>
+      <div><h3>Expected impact</h3><ul>
+        <li><span class="conf l">Likely</span>No step can be skipped or run out of order</li>
+        <li><span class="conf l">Likely</span>Approval evidence is produced as a by-product, not assembled afterwards</li>
+        <li><span class="conf g">Guessing</span>One lead can oversee more parallel migrations</li>
+      </ul></div>
+      <p class="limit wide">Limit: it enforces the process; it does not judge whether an approval was wise. A careless approver still passes the gate.</p>
+    </div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">1</span><h2>Discovery</h2></div>
+      <p class="role">Finds out what exists in the source: objects, sizes and what depends on what.</p>
+      <div class="chips"><span class="chip">LLM use: low</span><span class="chip">Input: connection reference</span><span class="chip">Output: inventory, dependency graph</span></div>
+    </div>
+    <div class="grid">
+      <div><h3>What it does</h3><ul>
+        <li>Reads the catalogue: schemas, tables, columns, keys, indexes, views, procedures, triggers</li>
+        <li>Records row counts and storage size per table</li>
+        <li>Builds a dependency graph from foreign keys and code references</li>
+        <li>Describes each table's likely purpose and flags unused or empty objects</li>
+        <li>Stores everything in the neutral schema model the other agents read</li>
+      </ul></div>
+      <div><h3>Industry process</h3><p>The assessment phase of every cloud and database migration method. Normally done by a data architect with catalogue queries, vendor assessment reports and interviews, then written into an inventory spreadsheet.</p></div>
+      <div><h3>Most useful when</h3><ul>
+        <li>Legacy systems have little or outdated documentation</li>
+        <li>Mergers bring in systems nobody on the team knows</li>
+        <li>Many databases must be sized to plan a programme</li>
+      </ul></div>
+      <div><h3>Expected impact</h3><ul>
+        <li><span class="conf l">Likely</span>Inventory in hours instead of days for a single database</li>
+        <li><span class="conf l">Likely</span>Unused objects identified early, shrinking scope</li>
+        <li><span class="conf l">Likely</span>Correct load order derived from dependencies, not memory</li>
+      </ul></div>
+      <p class="limit wide">Limit: it sees only what the database knows. Dependencies in application code, reports and external integrations still need people to name them.</p>
+    </div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">2</span><h2>Profiling</h2></div>
+      <p class="role">Measures the actual condition of the data before anyone designs around it.</p>
+      <div class="chips"><span class="chip">LLM use: medium</span><span class="chip">Input: inventory</span><span class="chip">Output: data quality report, PII flags</span></div>
+    </div>
+    <div class="grid">
+      <div><h3>What it does</h3><ul>
+        <li>Runs bounded, sampled queries per column: null rate, distinct count, ranges, lengths, patterns</li>
+        <li>Detects duplicates, orphan records and broken references</li>
+        <li>Spots encoding, date and precision problems that break on a new engine</li>
+        <li>Classifies columns that hold personal or sensitive data</li>
+        <li>Lists distinct values of code columns for the value mapper</li>
+      </ul></div>
+      <div><h3>Industry process</h3><p>Data quality assessment and data classification. Usually a data analyst writing profiling queries or using a data quality tool, with privacy classification done separately for compliance.</p></div>
+      <div><h3>Most useful when</h3><ul>
+        <li>Old systems have years of loosely validated input</li>
+        <li>Target has stricter constraints than source</li>
+        <li>Privacy rules apply: GDPR, India's DPDP Act, HIPAA, PCI-DSS</li>
+      </ul></div>
+      <div><h3>Expected impact</h3><ul>
+        <li><span class="conf l">Likely</span>Data defects surface before build, when they are cheap to fix, not at cutover</li>
+        <li><span class="conf l">Likely</span>Sensitive columns are masked for the rest of the run automatically</li>
+        <li><span class="conf g">Guessing</span>Fewer failed mock runs</li>
+      </ul></div>
+      <p class="limit wide">Limit: sampling can miss rare bad rows in very large tables, and it reports problems without fixing them. Cleansing decisions remain with the data owner.</p>
+    </div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">3</span><h2>Strategy</h2></div>
+      <p class="role">Proposes how to migrate: approach, order, downtime and the way back.</p>
+      <div class="chips"><span class="chip">LLM use: high</span><span class="chip">Input: inventory, profile, downtime budget</span><span class="chip">Output: migration plan</span><span class="chip gate">Gate: plan</span></div>
+    </div>
+    <div class="grid">
+      <div><h3>What it does</h3><ul>
+        <li>Chooses between one-shot, phased and continuous-sync approaches from size, allowed downtime and engine abilities</li>
+        <li>Groups tables into waves that respect dependencies</li>
+        <li>Estimates duration and states the assumptions behind the estimate</li>
+        <li>Lists risks and a rollback approach for each wave</li>
+        <li>Drafts the cutover runbook outline</li>
+      </ul></div>
+      <div><h3>Industry process</h3><p>Migration planning and design: approach selection, wave planning, cutover and rollback planning, recovery targets. Normally a solution architect's document reviewed by a design board.</p></div>
+      <div><h3>Most useful when</h3><ul>
+        <li>The team has little migration experience</li>
+        <li>Many similar databases need consistent plans</li>
+        <li>Downtime limits are tight and options must be compared</li>
+      </ul></div>
+      <div><h3>Expected impact</h3><ul>
+        <li><span class="conf l">Likely</span>A first plan draft in minutes, with reasoning written down</li>
+        <li><span class="conf l">Likely</span>A rollback approach exists for every run, which manual plans often omit</li>
+        <li><span class="conf g">Guessing</span>Estimates become more accurate as past runs are fed back</li>
+      </ul></div>
+      <p class="limit wide">Limit: this is the agent whose output is least checkable by machine. It does not know business calendars, contracts or team capacity. Treat the plan as a draft for an architect, never as a decision.</p>
+    </div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">4a</span><h2>Schema mapper</h2></div>
+      <p class="role">Works out where every source column goes in the target and how it must change.</p>
+      <div class="chips"><span class="chip">LLM use: high</span><span class="chip">Input: source and target schema, profile</span><span class="chip">Output: mapping spec, target DDL</span></div>
+    </div>
+    <div class="grid">
+      <div><h3>What it does</h3><ul>
+        <li>Matches tables and columns, including splits, merges and derived fields</li>
+        <li>Converts data types and flags truncation or precision loss</li>
+        <li>Writes the transform expression for each column</li>
+        <li>Plans new keys and the old-to-new ID crosswalk</li>
+        <li>Runs every transform on sample data before a person sees it</li>
+        <li>Presents the least certain mappings first for review</li>
+      </ul></div>
+      <div><h3>Industry process</h3><p>Source-to-target mapping, the central document of any migration, plus schema conversion. Today analysts fill a mapping workbook by hand; vendor schema converters handle types but not meaning.</p></div>
+      <div><h3>Most useful when</h3><ul>
+        <li>Moving between applications with different data models, such as ERP or CRM replacement</li>
+        <li>Warehouse modernisation with hundreds of tables</li>
+        <li>Consolidating systems after a merger</li>
+      </ul></div>
+      <div><h3>Expected impact</h3><ul>
+        <li><span class="conf l">Likely</span>Analysts review and correct a draft instead of writing every row; this is usually the largest block of manual effort</li>
+        <li><span class="conf l">Likely</span>Transform errors are caught by execution before build</li>
+        <li><span class="conf l">Likely</span>DDL, pipeline and checks come from one spec, so they cannot drift apart</li>
+      </ul></div>
+      <p class="limit wide">Limit: for a same-schema move between two engines, most of this is a lookup table and the model adds little. The risk to watch is a wrong match returned with high confidence; review and evaluation exist for that.</p>
+    </div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">4b</span><h2>Value mapper</h2></div>
+      <p class="role">Translates codes and categories whose meaning differs between systems.</p>
+      <div class="chips"><span class="chip">LLM use: medium</span><span class="chip">Input: distinct values from profiling</span><span class="chip">Output: value mapping tables</span><span class="chip gate">Gate: mapping</span></div>
+    </div>
+    <div class="grid">
+      <div><h3>What it does</h3><ul>
+        <li>Collects the distinct values of status, type, country, currency and similar columns</li>
+        <li>Proposes the matching target value for each, with a reason</li>
+        <li>Flags values with no match and values that appear only a few times</li>
+        <li>Always asks a business owner to confirm</li>
+      </ul></div>
+      <div><h3>Industry process</h3><p>Reference data and master data harmonisation: building crosswalk tables. Normally workshops between analysts and business users, and the step most often left until late.</p></div>
+      <div><h3>Most useful when</h3><ul>
+        <li>ERP and finance moves with charts of accounts and cost centres</li>
+        <li>Healthcare and insurance with coded diagnoses and products</li>
+        <li>Merging two companies' customer or product categories</li>
+      </ul></div>
+      <div><h3>Expected impact</h3><ul>
+        <li><span class="conf l">Likely</span>Catches errors that row counts and checksums cannot: data arrives intact but means the wrong thing</li>
+        <li><span class="conf l">Likely</span>Business users confirm a prepared list instead of starting from a blank sheet</li>
+      </ul></div>
+      <p class="limit wide">Limit: meaning is business knowledge. The agent cannot verify its suggestions by running anything, so nothing here is applied without sign-off.</p>
+    </div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">5</span><h2>Code conversion</h2></div>
+      <p class="role">Rewrites database logic for the target engine.</p>
+      <div class="chips"><span class="chip">LLM use: high</span><span class="chip">Input: views, procedures, triggers, functions</span><span class="chip">Output: converted code, confidence flags</span></div>
+    </div>
+    <div class="grid">
+      <div><h3>What it does</h3><ul>
+        <li>Translates views, stored procedures, functions and triggers into the target dialect</li>
+        <li>Uses rule-based translation first and a model for what rules cannot handle</li>
+        <li>Compiles the result on the target and retries on errors</li>
+        <li>Marks each object as tested, compiled only, or needs manual work</li>
+      </ul></div>
+      <div><h3>Industry process</h3><p>Database code conversion in engine changes, such as Oracle to PostgreSQL or Teradata to a cloud warehouse. Done by database developers with vendor converters, followed by long manual clean-up.</p></div>
+      <div><h3>Most useful when</h3><ul>
+        <li>Leaving a commercial database to cut licence cost</li>
+        <li>Warehouse moves with thousands of SQL scripts</li>
+        <li>Systems where much business logic lives in procedures</li>
+      </ul></div>
+      <div><h3>Expected impact</h3><ul>
+        <li><span class="conf l">Likely</span>Developers start from compiling code instead of rewriting from scratch</li>
+        <li><span class="conf l">Likely</span>The hard objects are identified up front, improving estimates</li>
+        <li><span class="conf g">Guessing</span>Shortens what is often the longest part of an engine change</li>
+      </ul></div>
+      <p class="limit wide">Limit: code that compiles is not code that behaves the same. Without existing tests or recorded inputs and outputs, equivalence cannot be proven, and complex procedures still need a developer.</p>
+    </div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">6</span><h2>Pipeline builder</h2></div>
+      <p class="role">Turns the approved mapping and plan into a runnable job for the chosen tool.</p>
+      <div class="chips"><span class="chip">LLM use: very low</span><span class="chip">Input: frozen spec, plan, engine abilities</span><span class="chip">Output: job configuration, load order</span><span class="chip gate">Gate: execute</span></div>
+    </div>
+    <div class="grid">
+      <div><h3>What it does</h3><ul>
+        <li>Asks the engine adapter what the tool supports</li>
+        <li>Generates job configuration from the frozen spec</li>
+        <li>Orders loads by dependency and sets batch sizes and parallelism</li>
+        <li>Makes every job restartable and safe to run twice</li>
+      </ul></div>
+      <div><h3>Industry process</h3><p>The build phase: writing migration scripts or configuring an ETL or replication tool. Done by data engineers, and tied to whichever tool the organisation bought.</p></div>
+      <div><h3>Most useful when</h3><ul>
+        <li>Different clients or teams use different migration tools</li>
+        <li>The same migration must be rehearsed many times</li>
+        <li>A tool must be swapped mid-project</li>
+      </ul></div>
+      <div><h3>Expected impact</h3><ul>
+        <li><span class="conf l">Likely</span>This is what makes the platform tool-agnostic: one spec, many engines</li>
+        <li><span class="conf l">Likely</span>No hand-written job can disagree with the approved mapping</li>
+      </ul></div>
+      <p class="limit wide">Limit: mostly templates, not intelligence. Each new tool still costs an adapter, and tuning for very large tables needs an engineer.</p>
+    </div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">7</span><h2>Execution monitor</h2></div>
+      <p class="role">Runs the jobs, watches them and explains failures.</p>
+      <div class="chips"><span class="chip">LLM use: low</span><span class="chip">Input: job configuration</span><span class="chip">Output: run status, failure diagnosis</span></div>
+    </div>
+    <div class="grid">
+      <div><h3>What it does</h3><ul>
+        <li>Submits jobs through the engine adapter and tracks progress and throughput</li>
+        <li>Retries transient failures within set limits</li>
+        <li>Reads engine errors and proposes the likely cause and fix</li>
+        <li>Stops and escalates on anything it cannot classify</li>
+      </ul></div>
+      <div><h3>Industry process</h3><p>Mock runs, the production load and cutover-night operations. Today engineers watch logs, often overnight, and restart failed steps by hand.</p></div>
+      <div><h3>Most useful when</h3><ul>
+        <li>Loads run for many hours</li>
+        <li>Several rehearsals are needed before the real run</li>
+        <li>Continuous sync must be watched until cutover</li>
+      </ul></div>
+      <div><h3>Expected impact</h3><ul>
+        <li><span class="conf l">Likely</span>Less time between a failure and knowing why</li>
+        <li><span class="conf l">Likely</span>Engineers are called for real problems, not for transient retries</li>
+        <li><span class="conf g">Guessing</span>Rehearsals get cheap enough that teams run more of them</li>
+      </ul></div>
+      <p class="limit wide">Limit: it never changes data to make a job pass. A diagnosis is a suggestion; anything beyond a retry needs a person.</p>
+    </div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">8</span><h2>Validation</h2></div>
+      <p class="role">Proves the target holds what the source held, or says exactly where it does not.</p>
+      <div class="chips"><span class="chip">LLM use: medium</span><span class="chip">Input: frozen spec, source, target</span><span class="chip">Output: reconciliation report</span><span class="chip gate">Gate: cutover</span></div>
+    </div>
+    <div class="grid">
+      <div><h3>What it does</h3><ul>
+        <li>Generates checks from the spec: row counts, column totals, hash comparison by key range, reference integrity</li>
+        <li>Re-applies transforms to source samples and compares with the target</li>
+        <li>Classifies each mismatch as a load defect, a mapping defect or a source data defect</li>
+        <li>Explains mismatches in plain language and routes rework to the right phase</li>
+        <li>Produces a report fit for sign-off</li>
+      </ul></div>
+      <div><h3>Industry process</h3><p>Reconciliation and acceptance. Usually testers compare counts and a sample of records, then assemble evidence for business and audit sign-off.</p></div>
+      <div><h3>Most useful when</h3><ul>
+        <li>Banking, insurance and finance, where totals must reconcile exactly</li>
+        <li>Audited environments such as SOX-controlled systems</li>
+        <li>Any migration too large to check by sampling</li>
+      </ul></div>
+      <div><h3>Expected impact</h3><ul>
+        <li><span class="conf l">Likely</span>Every table and column is checked, not a sample</li>
+        <li><span class="conf l">Likely</span>Sign-off evidence is generated, not compiled by hand</li>
+        <li><span class="conf l">Likely</span>Defects go back to their cause, avoiding pointless reloads</li>
+      </ul></div>
+      <p class="limit wide">Limit: it proves the data matches the spec. If the spec itself is wrong, validation passes. That is why mapping review and value sign-off cannot be skipped.</p>
+    </div>
+  </article>
+</section>
+
+<section>
+  <h2>Where the value concentrates</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Migration kind</th><th>Agents that matter most</th><th>Overall benefit</th></tr></thead>
+      <tbody>
+        <tr><td>Small, same engine, same schema</td><td>Validation only</td><td>Low. A dump and restore plus a few checks does the job.</td></tr>
+        <tr><td>Engine change, same schema</td><td>Code conversion, Validation, Profiling</td><td>Medium to high, driven by how much logic sits in the database.</td></tr>
+        <tr><td>Application or model change</td><td>Schema mapper, Value mapper, Validation</td><td>High. Mapping is most of the work.</td></tr>
+        <tr><td>Warehouse modernisation</td><td>Discovery, Schema mapper, Code conversion</td><td>High. Volume of objects is the problem.</td></tr>
+        <tr><td>Many databases, programme scale</td><td>Supervisor, Discovery, Strategy</td><td>High. Consistency and oversight across runs.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">These ratings are judgement, not measurement. The first real measurement comes from Phase 1: migrate one sample database end to end and record review edits, defects caught and time spent.</p>
+</section>
+
+</div>
+</body>
+</html>
