@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Migration Agents Functional Walkthrough</title>
+<style>
+:root {
+  --bg: #f6f7fb; --surface: #ffffff; --fg: #161a26; --muted: #5b6378; --line: #d5d9e6;
+  --accent: #4553c9; --accent-bg: #e9ebfb;
+  --ok: #0f7f76; --ok-bg: #dff3f0;
+  --warn: #b25e09; --warn-bg: #fbeeda;
+  --gate: #b3266b; --gate-bg: #fbe4ef;
+  --display: "Space Grotesk", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --body: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #10131c; --surface: #181c28; --fg: #e6e9f2; --muted: #9aa3b8; --line: #2d3345;
+    --accent: #98a3ff; --accent-bg: #23284d;
+    --ok: #54cfc3; --ok-bg: #123a37;
+    --warn: #f0ad5a; --warn-bg: #3d2c12;
+    --gate: #f283b6; --gate-bg: #40182b;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.6; }
+.page { max-width: 960px; margin: 0 auto; padding: 40px 16px 80px; display: flex; flex-direction: column; gap: 48px; }
+header { display: flex; flex-direction: column; gap: 12px; }
+h1 { font-family: var(--display); font-size: 32px; line-height: 1.15; margin: 0; }
+h2 { font-family: var(--display); font-size: 22px; line-height: 1.25; margin: 0; }
+h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0; font-weight: 600; }
+p { margin: 0; max-width: 72ch; }
+.lede { font-size: 17px; color: var(--muted); }
+.num { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+ul, ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; }
+li { max-width: 72ch; }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.scroll.pad { padding: 16px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 600px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.callout { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.agent { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px 24px; display: flex; flex-direction: column; gap: 18px; }
+.agent-head { display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.agent-title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.no { font-family: var(--mono); font-size: 13px; color: var(--accent); background: var(--accent-bg); padding: 2px 8px; border-radius: 4px; }
+.role { color: var(--muted); }
+.block { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px 28px; }
+.agent .scroll { background: var(--bg); }
+.ask { background: var(--warn-bg); border: 1px solid var(--warn); border-radius: 6px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+.ask h3 { color: var(--warn); }
+.pill { font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.pill.ok { color: var(--ok); border-color: var(--ok); background: var(--ok-bg); }
+.pill.warn { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+.pill.gate { color: var(--gate); border-color: var(--gate); background: var(--gate-bg); }
+.note { font-size: 13px; color: var(--muted); border-left: 2px solid var(--line); padding-left: 12px; }
+code { font-family: var(--mono); font-size: .9em; }
+pre { margin: 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; padding: 14px 16px; white-space: pre; }
+.cm { color: var(--muted); }
+figure { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+figcaption { font-size: 13px; color: var(--muted); max-width: 72ch; }
+svg { display: block; width: 100%; min-width: 760px; height: auto; color: var(--fg); font-family: var(--body); }
+svg .t { fill: var(--fg); font-size: 13px; font-weight: 600; }
+svg .l { fill: var(--muted); font-size: 11px; font-style: italic; }
+svg .bx { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.4; }
+svg .pl { fill: var(--surface); stroke: var(--muted); stroke-width: 1.2; }
+svg .h { fill: var(--gate-bg); stroke: var(--gate); stroke-width: 1.5; stroke-dasharray: 5 3; }
+svg .a { fill: none; stroke: currentColor; stroke-width: 1.3; }
+svg .ad { fill: none; stroke: currentColor; stroke-width: 1.3; stroke-dasharray: 4 3; }
+svg .ah { fill: currentColor; }
+@media print { body { background: #fff; font-size: 11.5px; } .page { max-width: none; padding: 0; gap: 26px; } .agent { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <span class="num">FUNCTIONAL WALKTHROUGH · FOR EXPERT REVIEW · DESIGN STAGE</span>
+  <h1>Migration Agents Functional Walkthrough</h1>
+  <p class="lede">How each agent in a planned migration platform would do its part of a database migration, shown on one worked example, written for someone who runs migrations for a living.</p>
+  <div class="callout">
+    <p><strong>What this is.</strong> A design, not a product. Nothing here is built. Every table, number and log line below is an illustration made up for this document to show intended behaviour.</p>
+    <p><strong>What we would like from you.</strong> Tell us where this does not match how migrations really go. Each agent ends with specific questions, and they are collected again at the end. Blunt answers are the most useful ones.</p>
+    <p><strong>The idea in one line.</strong> Software agents prepare and check the migration paperwork (inventory, profile, plan, mapping, conversion, reconciliation). Ordinary migration tools move the data. People approve every step that cannot be undone.</p>
+  </div>
+</header>
+
+<section>
+  <span class="num">01</span>
+  <h2>The flow</h2>
+  <figure>
+    <div class="scroll pad">
+      <svg viewBox="0 0 880 440" role="img" aria-label="Ten steps in order: discovery, profiling, strategy, plan approval, schema mapping, value mapping, mapping approval, code conversion, pipeline build, execution approval, execution, validation, cutover approval, report. Validation can send work back to execution.">
+        <defs><marker id="f1" markerWidth="8" markerHeight="8" refX="8" refY="4" orient="auto"><path class="ah" d="M0,0 L8,4 L0,8 z"/></marker></defs>
+        <rect class="bx" x="20" y="20" width="180" height="44" rx="5"/><text class="t" x="110" y="47" text-anchor="middle">1 Discovery</text>
+        <rect class="bx" x="240" y="20" width="180" height="44" rx="5"/><text class="t" x="330" y="47" text-anchor="middle">2 Profiling</text>
+        <rect class="bx" x="460" y="20" width="180" height="44" rx="5"/><text class="t" x="550" y="47" text-anchor="middle">3 Strategy</text>
+        <rect class="h" x="680" y="20" width="180" height="44" rx="22"/><text class="t" x="770" y="47" text-anchor="middle">Approve plan</text>
+        <line class="a" x1="200" y1="42" x2="240" y2="42" marker-end="url(#f1)"/>
+        <line class="a" x1="420" y1="42" x2="460" y2="42" marker-end="url(#f1)"/>
+        <line class="a" x1="640" y1="42" x2="680" y2="42" marker-end="url(#f1)"/>
+        <polyline class="a" points="770,64 770,97 110,97 110,130" marker-end="url(#f1)"/>
+
+        <rect class="bx" x="20" y="130" width="180" height="44" rx="5"/><text class="t" x="110" y="157" text-anchor="middle">4a Schema mapping</text>
+        <rect class="bx" x="240" y="130" width="180" height="44" rx="5"/><text class="t" x="330" y="157" text-anchor="middle">4b Value mapping</text>
+        <rect class="h" x="460" y="130" width="180" height="44" rx="22"/><text class="t" x="550" y="157" text-anchor="middle">Approve mapping</text>
+        <rect class="bx" x="680" y="130" width="180" height="44" rx="5"/><text class="t" x="770" y="157" text-anchor="middle">5 Code conversion</text>
+        <line class="a" x1="200" y1="152" x2="240" y2="152" marker-end="url(#f1)"/>
+        <line class="a" x1="420" y1="152" x2="460" y2="152" marker-end="url(#f1)"/>
+        <line class="a" x1="640" y1="152" x2="680" y2="152" marker-end="url(#f1)"/>
+        <polyline class="a" points="770,174 770,207 110,207 110,240" marker-end="url(#f1)"/>
+
+        <rect class="bx" x="20" y="240" width="180" height="44" rx="5"/><text class="t" x="110" y="267" text-anchor="middle">6 Pipeline build</text>
+        <rect class="h" x="240" y="240" width="180" height="44" rx="22"/><text class="t" x="330" y="267" text-anchor="middle">Approve execution</text>
+        <rect class="bx" x="460" y="240" width="180" height="44" rx="5"/><text class="t" x="550" y="267" text-anchor="middle">7 Execution</text>
+        <rect class="bx" x="680" y="240" width="180" height="44" rx="5"/><text class="t" x="770" y="267" text-anchor="middle">8 Validation</text>
+        <line class="a" x1="200" y1="262" x2="240" y2="262" marker-end="url(#f1)"/>
+        <line class="a" x1="420" y1="262" x2="460" y2="262" marker-end="url(#f1)"/>
+        <line class="a" x1="640" y1="262" x2="680" y2="262" marker-end="url(#f1)"/>
+        <path class="ad" d="M 730 284 C 730 314, 580 314, 580 284" marker-end="url(#f1)"/><text class="l" x="655" y="324" text-anchor="middle">load defect: reload</text>
+        <polyline class="a" points="810,284 810,345 110,345 110,376" marker-end="url(#f1)"/><text class="l" x="330" y="339" text-anchor="middle">all checks pass</text>
+
+        <rect class="h" x="20" y="376" width="180" height="44" rx="22"/><text class="t" x="110" y="403" text-anchor="middle">Approve cutover</text>
+        <rect class="pl" x="240" y="376" width="180" height="44" rx="5"/><text class="t" x="330" y="403" text-anchor="middle">Sign-off report</text>
+        <line class="a" x1="200" y1="398" x2="240" y2="398" marker-end="url(#f1)"/>
+      </svg>
+    </div>
+    <figcaption>Dashed pills are points where the run stops and waits for a named person. A rejected approval returns to the step before it. A mapping defect found in validation returns to schema mapping. A coordinator (agent 0) enforces this order and keeps the run resumable; it makes no migration decisions.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <span class="num">02</span>
+  <h2>The worked example</h2>
+  <p>An online shop moves its order database from MySQL 5.7 to PostgreSQL. The target schema has been redesigned, so this is not a like-for-like copy. Allowed downtime is four hours on a Sunday.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Source (MySQL <code>shopdb</code>)</th><th class="n">Rows</th><th>Target (PostgreSQL)</th><th>What changes</th></tr></thead>
+    <tbody>
+      <tr><td><code>cust_mst</code></td><td class="n">184,220</td><td><code>customers</code></td><td>Renamed columns, name fields merged, new surrogate key</td></tr>
+      <tr><td><code>prod_mst</code></td><td class="n">12,410</td><td><code>products</code></td><td>Mostly direct</td></tr>
+      <tr><td><code>ord_hdr</code></td><td class="n">1,932,480</td><td><code>orders</code></td><td>Date and time merged, status codes become words</td></tr>
+      <tr><td><code>ord_dtl</code></td><td class="n">6,204,115</td><td><code>order_items</code></td><td>Foreign keys re-pointed to new IDs</td></tr>
+      <tr><td><code>audit_bkp_2019</code></td><td class="n">2,880,031</td><td>none</td><td>Scope decision needed</td></tr>
+      <tr><td>3 views, 2 procedures, 1 trigger</td><td class="n"></td><td>To be converted</td><td>Dialect change</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <span class="num">03</span>
+  <h2>Agent by agent</h2>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">1</span><h2>Discovery</h2></div>
+      <p class="role">Does the inventory you would otherwise build from catalogue queries and a spreadsheet.</p>
+    </div>
+    <div class="two">
+      <div class="block"><h3>How it works</h3><ol>
+        <li>Connects with a read-only user and reads the system catalogue only, no table data.</li>
+        <li>Lists every table, column, key, index, view, procedure, function and trigger.</li>
+        <li>Records row counts and storage size.</li>
+        <li>Builds a dependency graph from foreign keys and from object names referenced inside views and procedures.</li>
+        <li>Writes a one-line guess at what each table is for, labelled as a guess.</li>
+        <li>Flags candidates for exclusion: empty tables, tables with backup-style names and no relationships.</li>
+      </ol></div>
+      <div class="block"><h3>You decide</h3><ul>
+        <li>What is in scope and what is left behind</li>
+        <li>Dependencies outside the database that it cannot see</li>
+      </ul>
+      <h3>It does not</h3><ul>
+        <li>Read application code, reports or integrations</li>
+        <li>Detect relationships that exist only by convention, with no declared key</li>
+      </ul></div>
+    </div>
+    <div class="block"><h3>Example output</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Object</th><th class="n">Rows</th><th class="n">Size</th><th>Depends on</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><code>cust_mst</code></td><td class="n">184,220</td><td class="n">61 MB</td><td>—</td><td>Customer master (inferred)</td></tr>
+        <tr><td><code>ord_hdr</code></td><td class="n">1,932,480</td><td class="n">410 MB</td><td><code>cust_mst</code></td><td>Order header (inferred)</td></tr>
+        <tr><td><code>ord_dtl</code></td><td class="n">6,204,115</td><td class="n">1.9 GB</td><td><code>ord_hdr</code>, <code>prod_mst</code></td><td>Order lines (inferred)</td></tr>
+        <tr><td><code>audit_bkp_2019</code></td><td class="n">2,880,031</td><td class="n">1.7 GB</td><td>—</td><td><span class="pill warn">exclude?</span> no keys, backup-style name</td></tr>
+        <tr><td><code>sp_monthly_sales</code></td><td class="n"></td><td class="n"></td><td><code>ord_hdr</code>, <code>ord_dtl</code></td><td>Procedure, 64 lines</td></tr>
+      </tbody>
+    </table></div></div>
+    <div class="ask"><h3>Questions for you</h3><ul>
+      <li>What do you look for in discovery that a catalogue never shows, and how do you find it?</li>
+      <li>Is an undeclared relationship (same column name, no foreign key) common enough that the agent should infer it from data?</li>
+    </ul></div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">2</span><h2>Profiling</h2></div>
+      <p class="role">Measures what is actually in the columns before anyone designs around assumptions.</p>
+    </div>
+    <div class="two">
+      <div class="block"><h3>How it works</h3><ol>
+        <li>For each column runs bounded queries: null rate, distinct count, min and max, length spread, common patterns.</li>
+        <li>Checks declared and suspected relationships for orphan rows.</li>
+        <li>Checks for values the target engine will refuse: zero dates, invalid encodings, numbers that overflow.</li>
+        <li>Classifies personal and sensitive columns, by pattern rules first and by name and shape second.</li>
+        <li>Lists every distinct value of low-cardinality columns for the value mapper.</li>
+        <li>Ranks findings by how likely they are to break the load.</li>
+      </ol></div>
+      <div class="block"><h3>You decide</h3><ul>
+        <li>Fix at source, fix in transform, or reject the rows</li>
+        <li>Whether a sensitivity flag is right</li>
+      </ul>
+      <h3>It does not</h3><ul>
+        <li>Change source data</li>
+        <li>Guarantee rare bad rows are found in very large tables when sampling is used</li>
+      </ul></div>
+    </div>
+    <div class="block"><h3>Example output</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Column</th><th>Finding</th><th class="n">Rows</th><th>Severity</th></tr></thead>
+      <tbody>
+        <tr><td><code>ord_hdr.ord_dt</code></td><td>Zero date <code>0000-00-00</code>, invalid in PostgreSQL</td><td class="n">87</td><td><span class="pill warn">blocks load</span></td></tr>
+        <tr><td><code>ord_hdr.cust_id</code></td><td>No matching customer</td><td class="n">412</td><td><span class="pill warn">blocks load</span></td></tr>
+        <tr><td><code>cust_mst.email</code></td><td>Duplicate values; target has a unique constraint</td><td class="n">1,204</td><td><span class="pill warn">blocks load</span></td></tr>
+        <tr><td><code>cust_mst.email</code></td><td>Null</td><td class="n">5,711</td><td>review</td></tr>
+        <tr><td><code>ord_hdr.status</code></td><td>Six distinct codes: N, P, S, C, X, D</td><td class="n"></td><td>to value mapping</td></tr>
+        <tr><td><code>cust_mst.phone</code>, <code>email</code></td><td>Personal data</td><td class="n"></td><td>masked from here on</td></tr>
+      </tbody>
+    </table></div></div>
+    <div class="ask"><h3>Questions for you</h3><ul>
+      <li>Which data problems have hurt you most at cutover that this list would not have caught?</li>
+      <li>Is sampling acceptable for profiling, or do you insist on full scans for some checks?</li>
+    </ul></div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">3</span><h2>Strategy</h2><span class="pill gate">approval: plan</span></div>
+      <p class="role">Drafts the migration approach document for an architect to accept or change.</p>
+    </div>
+    <div class="two">
+      <div class="block"><h3>How it works</h3><ol>
+        <li>Collects the facts: total size, largest tables, dependency order, blocking findings, allowed downtime, what the chosen tool can do.</li>
+        <li>Picks an approach: one-shot load, phased by domain, or load plus continuous sync.</li>
+        <li>Orders tables into waves from the dependency graph.</li>
+        <li>Estimates duration and writes down the assumptions behind it.</li>
+        <li>Lists risks and a rollback approach.</li>
+        <li>A rule check rejects any plan that breaks dependency order, needs something the tool cannot do, or exceeds the downtime on its own estimate.</li>
+      </ol></div>
+      <div class="block"><h3>You decide</h3><ul>
+        <li>Whether the approach is right</li>
+        <li>Everything it cannot know: business calendar, team, contracts, politics</li>
+      </ul>
+      <h3>It does not</h3><ul>
+        <li>Know real throughput until a rehearsal has run</li>
+        <li>Make the decision; it proposes</li>
+      </ul></div>
+    </div>
+    <div class="block"><h3>Example output</h3>
+    <div class="scroll"><pre>Approach     One-shot load with downtime
+Reason       2.4 GB in scope, 4 h window, no need for continuous sync
+Excluded     audit_bkp_2019 (pending scope decision)
+Waves        1  prod_mst, cust_mst
+             2  ord_hdr
+             3  ord_dtl
+             4  views, procedures, constraints, indexes, sequences
+Estimate     35 to 50 min load, 20 min validation
+Assumes      20 MB/s sustained, indexes built after load, no network limit
+Blocking     3 data findings must have a decided rule before mapping freeze
+Rollback     Source stays untouched and read-only during the window.
+             Abort before go-live: repoint application to source.
+             After go-live writes begin: no automatic way back in this approach.</pre></div></div>
+    <div class="ask"><h3>Questions for you</h3><ul>
+      <li>What inputs do you need for a credible plan that are missing here?</li>
+      <li>How do you estimate duration before the first rehearsal, and how wrong is it usually?</li>
+      <li>Is the rollback statement honest enough, or is anything short of reverse sync not a rollback in your view?</li>
+    </ul></div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">4a</span><h2>Schema mapping</h2></div>
+      <p class="role">Drafts and tests the source-to-target mapping workbook.</p>
+    </div>
+    <div class="two">
+      <div class="block"><h3>How it works</h3><ol>
+        <li>Fixed rules handle the obvious: same names, standard type conversions.</li>
+        <li>For the rest it shortlists candidate source columns using names, comments and profile statistics.</li>
+        <li>It picks the best candidate, writes the transform and gives a reason.</li>
+        <li>Each transform is run on sample rows and checked for truncation, null violations, lost uniqueness and failed casts.</li>
+        <li>Failed transforms are corrected and re-tested, up to three times.</li>
+        <li>The draft goes to review with the least certain and untested rows first.</li>
+        <li>Once approved, the mapping is frozen as a version. DDL, load jobs and validation checks are generated from that version only.</li>
+      </ol></div>
+      <div class="block"><h3>You decide</h3><ul>
+        <li>Every mapping it is unsure of</li>
+        <li>Rules for the blocking data findings</li>
+        <li>What is intentionally dropped</li>
+      </ul>
+      <h3>It does not</h3><ul>
+        <li>Know business meaning beyond names, comments and data shape</li>
+        <li>Allow a change after freeze without a new version</li>
+      </ul></div>
+    </div>
+    <div class="block"><h3>Example output</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Target</th><th>Source</th><th>Rule</th><th>Tested</th><th>Certainty</th></tr></thead>
+      <tbody>
+        <tr><td><code>customers.id</code></td><td>new key</td><td>Generated; old <code>cust_id</code> kept in a crosswalk table</td><td><span class="pill ok">pass</span></td><td>rule</td></tr>
+        <tr><td><code>customers.full_name</code></td><td><code>fname</code>, <code>lname</code></td><td><code>TRIM(CONCAT_WS(' ', fname, lname))</code></td><td><span class="pill ok">pass</span></td><td>high</td></tr>
+        <tr><td><code>customers.email</code></td><td><code>email</code></td><td><code>LOWER(TRIM(email))</code>; duplicates: rule needed</td><td><span class="pill warn">fails unique</span></td><td>high</td></tr>
+        <tr><td><code>orders.ordered_at</code></td><td><code>ord_dt</code>, <code>ord_tm</code></td><td>Combine; zero date becomes NULL</td><td><span class="pill ok">pass</span></td><td>medium</td></tr>
+        <tr><td><code>orders.customer_id</code></td><td><code>cust_id</code></td><td>Look up new ID in crosswalk; orphans: rule needed</td><td><span class="pill warn">412 unmatched</span></td><td>high</td></tr>
+        <tr><td><code>orders.status</code></td><td><code>status</code></td><td>Value map (see 4b)</td><td>pending</td><td>—</td></tr>
+        <tr><td><code>order_items.note</code></td><td><code>prod_note</code></td><td>Direct, <code>VARCHAR(40)</code></td><td><span class="pill warn">truncates 31 rows</span></td><td>high</td></tr>
+        <tr><td>none</td><td><code>cust_mst.fax</code></td><td>Dropped; 99.6% empty</td><td>—</td><td>confirm</td></tr>
+      </tbody>
+    </table></div></div>
+    <div class="ask"><h3>Questions for you</h3><ul>
+      <li>What columns belong in a mapping workbook that this one lacks?</li>
+      <li>Would you trust a draft like this enough to review it, or would you redo it from scratch?</li>
+      <li>How should the review screen sort and group rows so that a tired reviewer still catches the wrong ones?</li>
+      <li>In your projects, how much of the mapping is this kind of work and how much is argument about business meaning?</li>
+    </ul></div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">4b</span><h2>Value mapping</h2><span class="pill gate">approval: mapping</span></div>
+      <p class="role">Prepares the code crosswalks for a business owner to confirm.</p>
+    </div>
+    <div class="two">
+      <div class="block"><h3>How it works</h3><ol>
+        <li>Takes every distinct value and its frequency from profiling.</li>
+        <li>Matches identical values automatically.</li>
+        <li>Proposes a target value for the rest, with a reason.</li>
+        <li>Lists values with no match and values that occur only a handful of times.</li>
+        <li>Applies nothing until a person confirms each line.</li>
+      </ol></div>
+      <div class="block"><h3>You decide</h3><ul>
+        <li>Every mapping. Nothing here is approved automatically.</li>
+        <li>What happens to rows with unmatched values</li>
+      </ul>
+      <h3>It does not</h3><ul>
+        <li>Know what a code means; it infers from names, labels and usage</li>
+      </ul></div>
+    </div>
+    <div class="block"><h3>Example output: <code>ord_hdr.status</code> to <code>orders.status</code></h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Source</th><th class="n">Rows</th><th>Proposed target</th><th>Basis</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>N</td><td class="n">41,208</td><td>new</td><td>Lookup table label "New"</td><td>to confirm</td></tr>
+        <tr><td>P</td><td class="n">96,440</td><td>paid</td><td>Label "Paid"</td><td>to confirm</td></tr>
+        <tr><td>S</td><td class="n">1,702,115</td><td>shipped</td><td>Label "Shipped"</td><td>to confirm</td></tr>
+        <tr><td>C</td><td class="n">88,304</td><td>cancelled</td><td>Label "Cancelled"</td><td>to confirm</td></tr>
+        <tr><td>X</td><td class="n">4,404</td><td>cancelled?</td><td>No label; rows have zero amount</td><td><span class="pill warn">needs decision</span></td></tr>
+        <tr><td>D</td><td class="n">9</td><td>none</td><td>No label, no pattern</td><td><span class="pill warn">unmatched</span></td></tr>
+      </tbody>
+    </table></div></div>
+    <div class="ask"><h3>Questions for you</h3><ul>
+      <li>Who actually signs off crosswalks in your projects, and how late does that usually happen?</li>
+      <li>What do you do with the nine rows nobody can explain?</li>
+    </ul></div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">5</span><h2>Code conversion</h2></div>
+      <p class="role">Produces a first conversion of views, procedures and triggers and says how far each one was checked.</p>
+    </div>
+    <div class="two">
+      <div class="block"><h3>How it works</h3><ol>
+        <li>Orders objects so that dependencies are converted first.</li>
+        <li>Applies rule-based dialect translation.</li>
+        <li>Rewrites what rules cannot handle, using the frozen mapping for renamed tables and columns.</li>
+        <li>Compiles each object in a scratch schema on the target and corrects errors, up to three times.</li>
+        <li>Runs existing tests or recorded inputs and outputs where they exist.</li>
+        <li>Labels each object: tested, compiled only, or manual.</li>
+      </ol></div>
+      <div class="block"><h3>You decide</h3><ul>
+        <li>Whether "compiled only" objects behave the same</li>
+        <li>Whether logic should move out of the database instead</li>
+      </ul>
+      <h3>It does not</h3><ul>
+        <li>Deploy to the real target schema</li>
+        <li>Claim equivalence it has not tested</li>
+      </ul></div>
+    </div>
+    <div class="block"><h3>Example output</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Object</th><th>Changes made</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td><code>v_open_orders</code></td><td>Backticks removed, <code>IFNULL</code> to <code>COALESCE</code>, renamed columns</td><td><span class="pill ok">tested</span> same rows on sample</td></tr>
+        <tr><td><code>sp_monthly_sales</code></td><td><code>DATE_FORMAT</code> to <code>to_char</code>, procedure body to PL/pgSQL, <code>LIMIT x,y</code> rewritten</td><td><span class="pill warn">compiled only</span> no test data</td></tr>
+        <tr><td><code>trg_ord_upd</code></td><td>Relies on MySQL <code>ON UPDATE CURRENT_TIMESTAMP</code> behaviour and updates another table</td><td><span class="pill warn">manual</span> behaviour differs</td></tr>
+      </tbody>
+    </table></div></div>
+    <div class="ask"><h3>Questions for you</h3><ul>
+      <li>How do you prove a converted procedure behaves the same when there are no tests?</li>
+      <li>Which dialect differences cause silent wrong results rather than errors? Those are the ones we most need to detect.</li>
+    </ul></div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">6</span><h2>Pipeline build</h2><span class="pill gate">approval: execution</span></div>
+      <p class="role">Turns the frozen mapping and plan into load jobs for whichever tool is in use.</p>
+    </div>
+    <div class="two">
+      <div class="block"><h3>How it works</h3><ol>
+        <li>Asks the tool adapter what the tool supports.</li>
+        <li>Generates job configuration from the frozen mapping. The same mapping always gives the same configuration.</li>
+        <li>Sets load order, batch size and parallelism.</li>
+        <li>Adds pre-load and post-load steps: constraints and indexes off and on, sequence reset, statistics refresh.</li>
+        <li>Makes each table restartable on its own.</li>
+        <li>Does a dry run with no data to catch configuration errors.</li>
+      </ol></div>
+      <div class="block"><h3>You decide</h3><ul>
+        <li>Tuning for very large tables</li>
+        <li>Whether to start</li>
+      </ul>
+      <h3>It does not</h3><ul>
+        <li>Silently drop a transform the tool cannot express; it moves it to a post-load step or stops</li>
+      </ul></div>
+    </div>
+    <div class="block"><h3>Example output</h3>
+    <div class="scroll"><pre>Pre-load    create tables without secondary indexes and foreign keys
+Wave 1      products, customers            parallel 2, then build id crosswalk
+Wave 2      orders                         4 chunks by ord_id range
+Wave 3      order_items                    8 chunks by ord_id range
+Post-load   apply value maps check, create indexes, add foreign keys,
+            reset sequences to max(id)+1, ANALYZE, deploy converted views
+Restart     per table and per chunk; a rerun replaces the chunk, never appends</pre></div></div>
+    <div class="ask"><h3>Questions for you</h3><ul>
+      <li>Which post-load steps get forgotten most often in real projects?</li>
+      <li>Is chunk-level restart enough, or do you need something finer?</li>
+    </ul></div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">7</span><h2>Execution</h2></div>
+      <p class="role">Runs the jobs, watches them, and explains failures instead of leaving someone to read logs at night.</p>
+    </div>
+    <div class="two">
+      <div class="block"><h3>How it works</h3><ol>
+        <li>Applies the approved DDL, then submits jobs wave by wave.</li>
+        <li>Reports rows, throughput and time remaining per table.</li>
+        <li>Retries errors on a fixed list of transient causes: dropped connection, lock timeout.</li>
+        <li>For any other error it reads the message and context and writes a probable cause and a suggested fix.</li>
+        <li>Stops and calls a person for anything it did not retry.</li>
+      </ol></div>
+      <div class="block"><h3>You decide</h3><ul>
+        <li>What to do about any non-transient failure</li>
+      </ul>
+      <h3>It does not</h3><ul>
+        <li>Edit data or configuration to make a job pass</li>
+        <li>Skip rows on its own</li>
+      </ul></div>
+    </div>
+    <div class="block"><h3>Example output</h3>
+    <div class="scroll"><pre>02:00:04  wave 1  products       12,410 rows      done   3 s
+02:00:41  wave 1  customers     184,220 rows      done  37 s
+02:07:12  wave 2  orders      1,932,068 rows      done   6 m 31 s   (412 rejected by approved rule)
+02:09:55  wave 3  order_items chunk 3 of 8        FAILED
+          error     value too long for type character varying(40)
+          cause     order_items.note receives prod_note values up to 58 characters
+          class     mapping defect, not a load defect
+          suggest   widen target column or approve a truncation rule; then rerun chunk 3 only
+          action    run paused, sent back to schema mapping</pre></div></div>
+    <div class="ask"><h3>Questions for you</h3><ul>
+      <li>Which failures would you allow software to retry without asking, and which never?</li>
+      <li>What do you watch during a load that is not in this log?</li>
+    </ul></div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">8</span><h2>Validation</h2><span class="pill gate">approval: cutover</span></div>
+      <p class="role">Reconciles target against source and produces the evidence for sign-off.</p>
+    </div>
+    <div class="two">
+      <div class="block"><h3>How it works</h3><ol>
+        <li>Generates checks from the frozen mapping, not from free judgement.</li>
+        <li>Compares row counts, adjusted for rows excluded by an approved rule.</li>
+        <li>Compares column totals and counts on both sides, applying the transform to the source side.</li>
+        <li>Compares hashes by key range and narrows down to the differing rows.</li>
+        <li>Checks references, uniqueness and value-map coverage on the target.</li>
+        <li>Classifies each difference: load defect, mapping defect, source data defect, or expected by rule.</li>
+        <li>Pass or fail is decided by the numbers. The written explanation is added afterwards.</li>
+      </ol></div>
+      <div class="block"><h3>You decide</h3><ul>
+        <li>Whether each expected difference is truly acceptable</li>
+        <li>Cutover</li>
+      </ul>
+      <h3>It does not</h3><ul>
+        <li>Waive a failed check</li>
+        <li>Detect a mapping that is wrong but was approved: it validates against the mapping, not against the truth</li>
+      </ul></div>
+    </div>
+    <div class="block"><h3>Example output</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Check</th><th class="n">Source</th><th class="n">Target</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>customers row count</td><td class="n">184,220</td><td class="n">184,220</td><td><span class="pill ok">match</span></td></tr>
+        <tr><td>orders row count</td><td class="n">1,932,480</td><td class="n">1,932,068</td><td><span class="pill ok">expected</span> 412 orphans rejected, rule R-02</td></tr>
+        <tr><td>orders sum of amount</td><td class="n">88,410,227.40</td><td class="n">88,391,902.15</td><td><span class="pill ok">expected</span> difference equals the 412 rejected rows</td></tr>
+        <tr><td>orders hash, 400 key ranges</td><td class="n">400</td><td class="n">400</td><td><span class="pill ok">match</span></td></tr>
+        <tr><td>orders.ordered_at null count</td><td class="n">87 zero dates</td><td class="n">87 null</td><td><span class="pill ok">expected</span> rule R-01</td></tr>
+        <tr><td>order_items hash, 800 key ranges</td><td class="n">800</td><td class="n">799</td><td><span class="pill warn">differs</span> 31 rows, note truncated: mapping defect</td></tr>
+        <tr><td>orders.status outside allowed values</td><td class="n"></td><td class="n">0</td><td><span class="pill ok">pass</span></td></tr>
+      </tbody>
+    </table></div></div>
+    <div class="ask"><h3>Questions for you</h3><ul>
+      <li>What evidence does a business owner or auditor actually ask for before sign-off?</li>
+      <li>Which reconciliation checks do you consider mandatory that are missing here?</li>
+      <li>How do you catch a mapping that is wrong but consistently applied?</li>
+    </ul></div>
+  </article>
+
+  <article class="agent">
+    <div class="agent-head">
+      <div class="agent-title"><span class="no">0</span><h2>Coordinator</h2></div>
+      <p class="role">Not a migration role. It keeps the steps in order and the record straight.</p>
+    </div>
+    <div class="two">
+      <div class="block"><h3>How it works</h3><ul>
+        <li>Starts each step only when the previous one has produced its output</li>
+        <li>Stops at the four approvals and records who decided, when, and on which mapping version</li>
+        <li>Saves progress continuously, so a crash resumes instead of restarting</li>
+        <li>Sends rework to the step that caused the defect</li>
+        <li>Keeps a log of every statement run against source and target</li>
+      </ul></div>
+      <div class="block"><h3>It does not</h3><ul>
+        <li>Make any migration decision</li>
+        <li>Let a step be skipped, even by an administrator</li>
+      </ul></div>
+    </div>
+  </article>
+</section>
+
+<section>
+  <span class="num">04</span>
+  <h2>What we already know is weak</h2>
+  <ul>
+    <li><strong>A wrong mapping that gets approved passes validation.</strong> Validation proves the data follows the mapping. Review is the only defence, and reviewers get tired.</li>
+    <li><strong>Everything outside the database is invisible.</strong> Application code, reports, interfaces and batch jobs that depend on the old schema are not discovered.</li>
+    <li><strong>Converted code that compiles may still behave differently.</strong> Without tests there is no proof.</li>
+    <li><strong>The plan is only as good as the estimate.</strong> Real throughput is unknown until a rehearsal.</li>
+    <li><strong>The first version is one-shot load only.</strong> No continuous sync and no way back after go-live writes begin.</li>
+    <li><strong>For a simple same-engine copy this is overkill.</strong> The value is in redesigned targets, engine changes and large object counts.</li>
+  </ul>
+</section>
+
+<section>
+  <span class="num">05</span>
+  <h2>All review questions in one place</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Area</th><th>Question</th></tr></thead>
+    <tbody>
+      <tr><td>Overall</td><td>Is the order of steps and the placement of the four approvals how you would run it?</td></tr>
+      <tr><td>Overall</td><td>Which step here would you never hand to software, and why?</td></tr>
+      <tr><td>Overall</td><td>Where does most of your time actually go on a migration? Is that step covered?</td></tr>
+      <tr><td>Discovery</td><td>What do you look for that a catalogue never shows?</td></tr>
+      <tr><td>Profiling</td><td>Which data problems hurt most at cutover that this would miss?</td></tr>
+      <tr><td>Strategy</td><td>What inputs are missing for a credible plan and rollback?</td></tr>
+      <tr><td>Schema mapping</td><td>Would you review this draft or redo it? What would make you trust it?</td></tr>
+      <tr><td>Value mapping</td><td>Who signs off crosswalks, and what happens to unexplained values?</td></tr>
+      <tr><td>Code conversion</td><td>How do you prove equivalence without tests?</td></tr>
+      <tr><td>Pipeline build</td><td>Which post-load steps are forgotten most often?</td></tr>
+      <tr><td>Execution</td><td>What may software retry on its own, and what never?</td></tr>
+      <tr><td>Validation</td><td>What evidence is demanded for sign-off, and which checks are missing?</td></tr>
+      <tr><td>Scope</td><td>Is starting with MySQL to PostgreSQL and a redesigned target a sensible first case, or is there a better one?</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Technical design (architecture, data model, interfaces) is in a separate document and can be shared on request.</p>
+</section>
+
+</div>
+</body>
+</html>
